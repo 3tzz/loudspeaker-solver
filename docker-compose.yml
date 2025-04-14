@@ -1,0 +1,12 @@
+services:
+  fenics:
+    image: ${IMAGE_NAME}
+    container_name: ${CONTAINER_NAME}
+    volumes:
+      - ${ROOT_DIR}:${WORKING_DIR}
+    working_dir: ${WORKING_DIR}
+    stdin_open: true # Keeps stdin open for interactive sessions
+    tty: true # Allocates a pseudo-TTY
+    command: tail -f /dev/null # Keep the container running
+    env_file:
+      - .env
