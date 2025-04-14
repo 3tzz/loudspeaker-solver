@@ -1,0 +1,94 @@
+{
+  "sensitivity": {
+    "SPL1W": 93.1,
+    "unit": "dB"
+  },
+  "frequency_response": {
+    "min": 95,
+    "max": 7500,
+    "unit": "Hz"
+  },
+  "thiele_and_small": {
+    "resonance_frequency": {
+      "fS": 117,
+      "unit": "Hz"
+    },
+    "quality_factors": {
+      "QMS": 8.97,
+      "QES": 0.64,
+      "QTS": 0.6
+    }
+  },
+  "large_signal_parameters": {
+    "maximum_linear_excursion": {
+      "xmax": 4,
+      "unit": "mm"
+    },
+    "displaced_air_volume_at_xmax": {
+      "VD": 59,
+      "unit": "cm³"
+    },
+    "power_handling": {
+      "P": 200,
+      "unit": "W",
+      "Pmax": 400,
+      "Ppeak": 800
+    }
+  },
+  "voice_coil": {
+    "nominal_impedance": {
+      "Z": 8,
+      "unit": "Ω"
+    },
+    "DC_resistance": {
+      "RE": 6.1,
+      "unit": "Ω"
+    },
+    "inductance": {
+      "LE": 0.53,
+      "unit": "mH"
+    },
+    "VC_diameter": {
+      "diameter": 38,
+      "unit": "mm"
+    },
+    "winding_height": {
+      "HVC": 12,
+      "unit": "mm"
+    },
+    "winding_material": "Copper Clad Aluminium",
+    "former_material": "Kapton"
+  },
+  "magnet": {
+    "force_factor": {
+      "Bl": 8.26,
+      "unit": "N/A"
+    },
+    "motor_constant": {
+      "Bl_sqrtRE": 3.34,
+      "unit": "N/√W"
+    },
+    "air_gap_height": {
+      "HAG": 8,
+      "unit": "mm"
+    }
+  },
+  "diaphragm": {
+    "effective_diameter": {
+      "diameter": 137,
+      "unit": "mm"
+    },
+    "effective_area": {
+      "SD": 147,
+      "unit": "cm²"
+    }
+  },
+  "moving_mass": {
+    "MMS": 9.8,
+    "unit": "g"
+  },
+  "moving_mass_without_air_load": {
+    "MMD": 8.5,
+    "unit": "g"
+  }
+}
