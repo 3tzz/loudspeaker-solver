@@ -1,0 +1,50 @@
+!------ Skeleton for body section -----
+Body 1
+  Name = air
+End
+
+Body 2
+  Name = magnet
+End
+
+!------ Skeleton for boundary section -----
+Boundary Condition 1
+  Name = magnet_top
+End
+
+Boundary Condition 2
+  Name = magnet_side_external
+End
+
+Boundary Condition 3
+  Name = magnet_bottom
+End
+
+Boundary Condition 4
+  Name = magnet_side_internal
+End
+
+Boundary Condition 5
+  Name = wall_left
+End
+
+Boundary Condition 6
+  Name = wall_front
+End
+
+Boundary Condition 7
+  Name = wall_bottom
+End
+
+Boundary Condition 8
+  Name = wall_rear
+End
+
+Boundary Condition 9
+  Name = wall_top
+End
+
+Boundary Condition 10
+  Name = wall_right
+End
+

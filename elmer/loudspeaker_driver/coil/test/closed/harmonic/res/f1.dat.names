@@ -1,0 +1,23 @@
+Metadata for SaveScalars file: res/f1.dat
+Elmer version: 9.0
+Elmer revision: 3d65e40ce
+Elmer compilation date: 2025-03-10
+Solver input file: team7_harmonic.sif
+File started at: 2025/03/23 22:58:10
+ 
+Variables in columns of matrix: 
+   1: res: eddy current power
+   2: res: electromagnetic field energy
+   3: res: time
+   4: res: i_is re
+   5: res: i_is im
+   6: res: i_component(1) re
+   7: res: i_component(1) im
+   8: res: v_is re
+   9: res: v_is im
+  10: res: v_component(1) re
+  11: res: v_component(1) im
+  12: res: u_2_circuit_1 re
+  13: res: u_2_circuit_1 im
+  14: res: r_component(1)
+  15: res: p_dc_component(1)

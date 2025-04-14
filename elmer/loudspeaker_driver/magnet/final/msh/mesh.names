@@ -1,0 +1,14 @@
+! ----- names for bodies -----
+$ air = 1
+$ magnet = 2
+! ----- names for boundaries -----
+$ magnet_top = 3
+$ magnet_side_external = 4
+$ magnet_bottom = 5
+$ magnet_side_internal = 6
+$ wall_left = 7
+$ wall_front = 8
+$ wall_bottom = 9
+$ wall_rear = 10
+$ wall_top = 11
+$ wall_right = 12

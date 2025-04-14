@@ -1,0 +1,7 @@
+<VTKFile type="Collection" version="0.1" byte_order="LittleEndian"><Collection>                 
+<DataSet timestep="   1.000E+00" group="" part="1" file="f_mag_t0001.vtu"/>                    
+<DataSet timestep="   1.000E+00" group="" part="2" file="f_ferro inside_t0001.vtu"/>           
+<DataSet timestep="   1.000E+00" group="" part="3" file="f_ferro_t0001.vtu"/>                  
+<DataSet timestep="   1.000E+00" group="" part="4" file="f_air gap_t0001.vtu"/>                
+<DataSet timestep="   1.000E+00" group="" part="5" file="f_air_t0001.vtu"/>                    
+</Collection></VTKFile>                                                                        

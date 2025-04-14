@@ -1,0 +1,130 @@
+!------ Skeleton for body section -----
+Body 1
+  Name = magnet
+End
+
+Body 2
+  Name = ferro_inside
+End
+
+Body 3
+  Name = ferro
+End
+
+Body 4
+  Name = air_gap
+End
+
+Body 5
+  Name = air
+End
+
+!------ Skeleton for boundary section -----
+Boundary Condition 1
+  Name = wall_external
+End
+
+Boundary Condition 2
+  Name = wall_top
+End
+
+Boundary Condition 3
+  Name = wall_bottom
+End
+
+Boundary Condition 4
+  Name = air_ferro_top_outer
+End
+
+Boundary Condition 5
+  Name = air_ferro_side_outer
+End
+
+Boundary Condition 6
+  Name = air_xmax_ring
+End
+
+Boundary Condition 7
+  Name = air_ferro_bottom_outer
+End
+
+Boundary Condition 8
+  Name = air_air_gap_top
+End
+
+Boundary Condition 9
+  Name = magnet_top
+End
+
+Boundary Condition 10
+  Name = magnet_side_external
+End
+
+Boundary Condition 11
+  Name = magnet_bottom
+End
+
+Boundary Condition 12
+  Name = magnet_side_internal
+End
+
+Boundary Condition 13
+  Name = ferro_inside_external
+End
+
+Boundary Condition 14
+  Name = ferro_inside_top
+End
+
+Boundary Condition 15
+  Name = ferro_inside_bottom
+End
+
+Boundary Condition 16
+  Name = ferro_top_outer
+End
+
+Boundary Condition 17
+  Name = ferro_top_inner
+End
+
+Boundary Condition 18
+  Name = ferro_air_gap
+End
+
+Boundary Condition 19
+  Name = ferro_side_inner
+End
+
+Boundary Condition 20
+  Name = ferro_side_outer
+End
+
+Boundary Condition 21
+  Name = ferro_bottom_inner
+End
+
+Boundary Condition 22
+  Name = ferro_bottom_outer
+End
+
+Boundary Condition 23
+  Name = air_gap_side_external
+End
+
+Boundary Condition 24
+  Name = air_gap_top
+End
+
+Boundary Condition 25
+  Name = air_gap_bottom_outer
+End
+
+Boundary Condition 26
+  Name = air_gap_side_internal
+End
+
+Boundary Condition 27
+  Name = air_gap_bottom_inner
+End
+

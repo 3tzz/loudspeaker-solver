@@ -1,0 +1,12 @@
+services:
+  elmer:
+    image: elmer_gui
+    container_name: elmer
+    volumes:
+      - ${PWD}:/home/freetzz/shared/
+      - /tmp/.X11-unix:/tmp/.X11-unix # Mount the X11 socket
+    stdin_open: true
+    tty: true
+    environment:
+      - DISPLAY=${DISPLAY} # Pass the display variable from the host
+    command: /bin/bash
