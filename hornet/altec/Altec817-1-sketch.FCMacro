@@ -1,0 +1,32 @@
+# -*- coding: utf-8 -*-
+# version release 1.0
+import PySide
+from PySide import QtGui ,QtCore
+from PySide.QtGui import *
+from PySide.QtCore import *
+
+print("Sketch update started")  # Don't forget to be gentle with the changes in order to avoid sketch issues, small steps are recomended
+
+# Sketch change Values
+App.ActiveDocument.Sketch.setDatum('thickness',App.Units.Quantity(str(18)+'mm'))
+App.ActiveDocument.Sketch.setDatum('depth',App.Units.Quantity(str(680)+'mm'))
+App.ActiveDocument.Sketch.setDatum('baffle',App.Units.Quantity(str(460)+'mm'))
+App.ActiveDocument.Sketch.setDatum('Tr',App.Units.Quantity(str(160)+'mm'))
+App.ActiveDocument.Sketch.setDatum('L1',App.Units.Quantity(str(340)+'mm'))
+App.ActiveDocument.Sketch.setDatum('L2',App.Units.Quantity(str(350)+' mm'))
+App.ActiveDocument.Sketch.setDatum('L3',App.Units.Quantity(str(77)+'mm'))
+App.ActiveDocument.Sketch.setDatum('L4',App.Units.Quantity(str(370)+'mm'))
+App.ActiveDocument.Sketch.setDatum('Rflare',App.Units.Quantity(str(600)+'mm'))
+App.ActiveDocument.Sketch.setDatum('exit',App.Units.Quantity(str(726)+'mm'))
+
+# Spreadsheet change Values
+App.ActiveDocument.Spreadsheet.set('A7',str(858)+'mm')  # Cab Int Width
+
+# Rebuild Model
+App.getDocument('Altec817_1').recompute()
+
+print("Sketch update finished")
+print("Check spreadsheet values")
+
+# Use the line below code to call the macro without save dialog, repeat the code according to the amout of cases you are going to simulate.
+# exec(open('FULL-PATH-NAME-nodialog.FCMacro').read())
