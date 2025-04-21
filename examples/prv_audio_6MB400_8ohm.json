@@ -84,11 +84,11 @@
     }
   },
   "moving_mass": {
-    "MMS": 9.8,
-    "unit": "g"
+    "MMS": 0.0098,
+    "unit": "kg"
   },
   "moving_mass_without_air_load": {
-    "MMD": 8.5,
-    "unit": "g"
+    "MMD": 0.0085,
+    "unit": "kg"
   }
 }
