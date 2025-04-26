@@ -1,5 +1,7 @@
 # loudspeaker-solver
 
+![Alt text](./dosc/beaver_chatgpt_generated.png)
+
 ## Environment Setup
 
 ### Configure
