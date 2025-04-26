@@ -1,6 +1,8 @@
 # loudspeaker-solver
 
-![Alt text](./dosc/beaver_chatgpt_generated.png)
+<p align="left">
+  <img src="./dosc/beaver_chatgpt_generated.png" width="400">
+</p>
 
 ## Environment Setup
 
