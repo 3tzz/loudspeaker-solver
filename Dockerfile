@@ -10,4 +10,4 @@ WORKDIR &{ROOT_DIR}
 COPY . &{ROOT_DIR}
 
 RUN source /usr/local/bin/dolfinx-complex-mode && pip install -e .
-RUN source /usr/local/bin/dolfinx-complex-mode && pip install -e .
+RUN source /usr/local/bin/dolfinx-real-mode && pip install -e .

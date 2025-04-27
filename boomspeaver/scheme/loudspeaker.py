@@ -1,10 +1,12 @@
 # pylint: disable=invalid-name
+# pylint: disable=too-many-instance-attributes
+# pylint: disable=missing-module-docstring
+# pylint: disable=missing-class-docstring
 
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from boomspeaver.tools import data
 from boomspeaver.tools.data import get_repo_dir, get_value_from_dict, load_json_file
 
 
@@ -96,7 +98,7 @@ class Magnet:
     Bl_sqrtRE: float  # N/√W
     HAG: float  # mm
 
-    def __init__(self, data):
+    def __init__(self, data: dict[str, Any]):
         self.Bl = get_value_from_dict(data, "magnet", "force_factor", "Bl")
         self.Bl_sqrtRE = get_value_from_dict(
             data, "magnet", "motor_constant", "Bl_sqrtRE"
@@ -109,7 +111,7 @@ class Diaphragm:
     diameter: float  # mm
     SD: float  # cm²
 
-    def __init__(self, data):
+    def __init__(self, data: dict[str, Any]):
         self.diameter = get_value_from_dict(
             data, "diaphragm", "effective_diameter", "diameter"
         )
@@ -121,14 +123,14 @@ class MovingMass:
     MMS: float  # kg
     MMD: float  # kg
 
-    def __init__(self, data):
+    def __init__(self, data: dict[str, Any]):
         self.MMS = get_value_from_dict(data, "moving_mass", "MMS")
         self.MMD = get_value_from_dict(data, "moving_mass_without_air_load", "MMD")
 
 
 @dataclass
 class Loudspeaker:
-    def __init__(self, data):
+    def __init__(self, data: dict[str, Any]):
         self.sensitivity = get_value_from_dict(data, "sensitivity", "SPL1W")
         self.frequency_response = get_value_from_dict(data, "frequency_response")
         self.thiele_small = ThieleSmallParameters(data)
@@ -139,23 +141,24 @@ class Loudspeaker:
         self.moving_mass = MovingMass(data)
 
     @classmethod
-    def from_json(cls, input_config_path: Path) -> "Loudspeaker":
-        assert isinstance(input_config_path, Path)
-        return cls(load_json_file(input_config_path))
+    def from_json(cls, input_path: Path) -> "Loudspeaker":
+        """Load loudspeaker parameters from json file."""
+        assert isinstance(input_path, Path)
+        return cls(load_json_file(input_path))
 
     def print_main_params(self) -> None:
         """Show main loudspeaker parameters."""
-        print(f"Sensitivity: {loudspeaker.sensitivity} dB")
-        print(f"Resonance Frequency (fS): {loudspeaker.thiele_small.fS} Hz")
-        print(f"QTS: {loudspeaker.thiele_small.quality_factors.QTS}")
-        print(f"Xmax: {loudspeaker.large_signal_parameters.xmax} mm")
-        print(f"Bl: {loudspeaker.magnet.Bl} N/A")
-        print(f"Moving Mass (MMS): {loudspeaker.moving_mass.MMS} kg")
+        print(f"Sensitivity: {self.sensitivity} dB")
+        print(f"Resonance Frequency (fS): {self.thiele_small.fS} Hz")
+        print(f"QTS: {self.thiele_small.quality_factors.QTS}")
+        print(f"Xmax: {self.large_signal_parameters.xmax} mm")
+        print(f"Bl: {self.magnet.Bl} N/A")
+        print(f"Moving Mass (MMS): {self.moving_mass.MMS} kg")
 
 
 if __name__ == "__main__":
 
     repo_dir = get_repo_dir()
     input_config_path = repo_dir / "examples/prv_audio_6MB400_8ohm.json"
-    loudspeaker = Loudspeaker.from_json(input_config_path=input_config_path)
+    loudspeaker = Loudspeaker.from_json(input_path=input_config_path)
     loudspeaker.print_main_params()

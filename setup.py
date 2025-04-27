@@ -11,5 +11,6 @@ setup(
         "pyvista",
         "imageio",
         "gmsh",
+        "soundfile",
     ],
 )
