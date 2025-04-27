@@ -12,5 +12,7 @@ setup(
         "imageio",
         "gmsh",
         "soundfile",
+        "scipy",
+        "dotenv",
     ],
 )

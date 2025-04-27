@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
     - Repository environment package with  python requerements.
     - Loudspeaker config schema.
     - FEM wave_equation solver.
-    - Signal generate and analyse tools.
+    - Signal generate, analyse, visualise tools.
 
 ---
 

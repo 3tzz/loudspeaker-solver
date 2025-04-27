@@ -1,10 +1,10 @@
 import argparse
-from logging import raiseExceptions
 from pathlib import Path
 
 import numpy as np
 
 from boomspeaver.tools.data import save_wave_file
+from boomspeaver.tools.signal.signal import normalize
 
 
 def generate_time_domain(
@@ -93,14 +93,6 @@ def generate_chord(
         signal += generate_cosine_wave(f, duration, fs, amplitude)
     if signal_norm:
         signal = normalize(signal)
-    return signal
-
-
-def normalize(signal: np.ndarray) -> np.ndarray:
-    """Normalizes the audio signal to the range [-1, 1]."""
-    max_amplitude = np.max(np.abs(signal))
-    if max_amplitude > 0:
-        return signal / max_amplitude
     return signal
 
 

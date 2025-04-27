@@ -90,13 +90,6 @@ def pad_vector(vector_to_pad: np.ndarray, reference_vector: np.ndarray) -> np.nd
         raise ValueError("Provided vector to pad is longer than reference.")
 
 
-def get_resolution(vector: np.ndarray) -> float:
-    """Get resolution behind values from vector."""
-    assert isinstance(vector, np.ndarray)
-    assert vector.size >= 2
-    return float(np.mean(np.diff(vector)))
-
-
 def get_value_from_dict(data: dict, *keys, default=None) -> Any:
     """Safely get a value from nested dictionaries with a default fallback."""
     for key in keys:
@@ -117,13 +110,20 @@ def get_env_variables(env_file: Path | None = None) -> None:
         raise FileNotFoundError(f".env file not found at {env_file}")
 
 
-def get_repo_dir() -> Path:
+def get_repo_dir(run_type: str = "docker") -> Path:
     """Get root repository directory."""
-    if "WORKING_DIR" not in os.environ:
-        get_env_variables()
-    if "WORKING_DIR" not in os.environ:
-        raise EnvironmentError(
-            "WORKING_DIR not found in environment variables even after loading .env"
-        )
-
-    return Path(os.environ["WORKING_DIR"])
+    if run_type == "docker":
+        if "WORKING_DIR" not in os.environ:
+            get_env_variables()
+        if "WORKING_DIR" not in os.environ:
+            raise EnvironmentError(
+                "WORKING_DIR not found in environment variables even after loading .env"
+            )
+        repo_dir = Path(os.environ["WORKING_DIR"])
+    elif run_type == "python":
+        repo_dir = Path(__file__).resolve().parent.parent.parent
+    else:
+        raise ValueError(f"Unknown run type: {run_type}.")
+    if not repo_dir.exists():
+        raise FileNotFoundError("Root repository directory not found.")
+    return repo_dir
