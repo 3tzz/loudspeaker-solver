@@ -173,9 +173,12 @@ if __name__ == "__main__":
 
     # Example
     time_path = repo_dir / "examples/time_vector.npy"
-    time_path = repo_dir / "examples/time_vector_1s_48kHz.npy"
+    # time_path = repo_dir / "examples/time_vector_1s_48kHz.npy"
     mesh_path = None
-    output_path = repo_dir / "output/wave_equation_default_440hz_highresolution.xdmf"
+
+    output_path = repo_dir / "output/wave_equation_default.xdmf"
+    # output_path = repo_dir / "output/wave_equation_default_440hz_highresolution.xdmf"
+    # output_path = repo_dir / "output/wave_equation_default_neumann.xdmf"
 
     force_shape = Shape(
         name="square_spatial_profile",

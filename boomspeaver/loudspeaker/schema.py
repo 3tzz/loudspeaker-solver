@@ -12,11 +12,11 @@ from boomspeaver.tools.data import get_repo_dir, get_value_from_dict, load_json_
 
 @dataclass
 class LargeSignalParameters:
-    xmax: float  # mm
-    vd: float  # cm³
-    P: float  # W
-    Pmax: float  # W
-    Ppeak: float  # W
+    xmax: float  # maximum linear excursion [mm]
+    vd: float  # air volume displaced at xmax [cm³]
+    P: float  # power [W]
+    Pmax: float  # program power [W]
+    Ppeak: float  # peak power [W]
 
     def __init__(self, data: dict[str, Any]):
         self.xmax = get_value_from_dict(
@@ -56,7 +56,7 @@ class QualityFactors:
 
 @dataclass
 class ThieleSmallParameters:
-    fS: float  # Hz
+    fS: float  # resonance  frequency [Hz]
     quality_factors: QualityFactors
 
     def __init__(self, data: dict[str, Any]):
@@ -68,11 +68,11 @@ class ThieleSmallParameters:
 
 @dataclass
 class VoiceCoil:
-    Z: float  # Ω
-    RE: float  # Ω
-    LE: float  # mH
-    VC_diameter: float  # mm
-    HVC: float  # mm
+    Z: float  # nominal impedance [Ω]
+    RE: float  # DC resistance [Ω]
+    LE: float  # inductance (1kHz) [mH]
+    VC_diameter: float  # VC Diameter [mm]
+    HVC: float  # winding height [mm]
     winding_material: str
     former_material: str
 
@@ -94,9 +94,9 @@ class VoiceCoil:
 
 @dataclass
 class Magnet:
-    Bl: float  # N/A
-    Bl_sqrtRE: float  # N/√W
-    HAG: float  # mm
+    Bl: float  # force factor [N/A]
+    Bl_sqrtRE: float  # motor constant [N/√W]
+    HAG: float  # air gap height [mm]
 
     def __init__(self, data: dict[str, Any]):
         self.Bl = get_value_from_dict(data, "magnet", "force_factor", "Bl")
@@ -108,8 +108,8 @@ class Magnet:
 
 @dataclass
 class Diaphragm:
-    diameter: float  # mm
-    SD: float  # cm²
+    diameter: float  # effective diameter [mm]
+    SD: float  # effective area [cm²]
 
     def __init__(self, data: dict[str, Any]):
         self.diameter = get_value_from_dict(
@@ -120,8 +120,8 @@ class Diaphragm:
 
 @dataclass
 class MovingMass:
-    MMS: float  # kg
-    MMD: float  # kg
+    MMS: float  # moving mass [kg]
+    MMD: float  # moving mass (without air load) [kg]
 
     def __init__(self, data: dict[str, Any]):
         self.MMS = get_value_from_dict(data, "moving_mass", "MMS")
@@ -158,7 +158,8 @@ class Loudspeaker:
 
 if __name__ == "__main__":
 
-    repo_dir = get_repo_dir()
+    # repo_dir = get_repo_dir(run_type="python")
+    repo_dir = get_repo_dir(run_type="docker")
     input_config_path = repo_dir / "examples/prv_audio_6MB400_8ohm.json"
     loudspeaker = Loudspeaker.from_json(input_path=input_config_path)
     loudspeaker.print_main_params()

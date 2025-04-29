@@ -7,6 +7,15 @@ from boomspeaver.tools.data import save_wave_file
 from boomspeaver.tools.signal.signal import normalize
 
 
+def add_silence(
+    signal: np.ndarray, start: bool = True, n_samples: int = 100
+) -> np.ndarray:
+    if start:
+        return np.concatenate((np.zeros(n_samples), signal))
+    else:
+        return np.concatenate((signal, np.zeros(n_samples)))
+
+
 def generate_time_domain(
     sampling_rate: int, duration: float | None = None, n_samples: int | None = None
 ) -> np.ndarray:
@@ -36,6 +45,7 @@ def generate_cosine_wave(
     """Generates a sine wave signal."""
     t = generate_time_domain(sampling_rate=fs, duration=duration)
     cosine_wave = amplitude * np.sin(2 * np.pi * frequency * t)
+    cosine_wave = add_silence(cosine_wave)
     if signal_norm:
         cosine_wave = normalize(cosine_wave)
     return cosine_wave
@@ -55,6 +65,8 @@ def generate_sweep_wave(
     sweep_signal = amplitude * np.sin(
         2 * np.pi * np.linspace(f_start, f_end, len(t)) * t
     )
+
+    sweep_signal = add_silence(sweep_signal)
     if signal_norm:
         sweep_signal = normalize(sweep_signal)
     return sweep_signal
@@ -71,8 +83,12 @@ def generate_log_sweep(
     """Generates a logarithmic frequency sweep (chirp) with constant perceived volume."""
 
     t = generate_time_domain(sampling_rate=fs, duration=duration)
-    log_frequencies = np.logspace(np.log10(f_start), np.log10(f_end), num=len(t))
-    sweep_signal = amplitude * np.sin(2 * np.pi * log_frequencies * t)
+    k = np.log(f_end / f_start) / duration
+    phase = 2 * np.pi * f_start * (np.exp(k * t) - 1) / k
+
+    sweep_signal = amplitude * np.sin(phase)
+
+    sweep_signal = add_silence(sweep_signal)
     if signal_norm:
         sweep_signal = normalize(sweep_signal)
     return sweep_signal
@@ -91,6 +107,8 @@ def generate_chord(
     signal = np.zeros_like(t)
     for f in frequencies:
         signal += generate_cosine_wave(f, duration, fs, amplitude)
+
+    signal = add_silence(signal)
     if signal_norm:
         signal = normalize(signal)
     return signal

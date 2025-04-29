@@ -47,3 +47,22 @@ cd &{ROOT_DIR}
 ```
 
 ### Loudspeaker solver service
+
+### Repository
+
+#### Loudspeaker
+
+Represents loudspeaker parameters. Good resources u can find in [loudspeaker database site](https://loudspeakerdatabase.com).
+Example loudspeaker `PRV Audio 6MB400` file with parameters created in [repository](./examples/prv_audio_6MB400_8ohm.json) from [site](https://loudspeakerdatabase.com/PRV/6MB400).
+
+- `schema.py` - structure representing loudspeaker parameters
+- `geometry`
+- `mesh`
+
+#### Electromagnetic
+
+#### Mechanical
+
+#### Acoustic
+
+#### Tools

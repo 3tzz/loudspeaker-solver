@@ -125,5 +125,5 @@ def get_repo_dir(run_type: str = "docker") -> Path:
     else:
         raise ValueError(f"Unknown run type: {run_type}.")
     if not repo_dir.exists():
-        raise FileNotFoundError("Root repository directory not found.")
+        raise FileNotFoundError(f"Root repository directory not found {repo_dir}.")
     return repo_dir

@@ -1,8 +1,8 @@
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 from scipy.fft import fft, fftfreq
-from scipy.signal import butter, filtfilt, find_peaks, spectrogram
+from scipy.signal import butter, filtfilt, find_peaks, get_window, spectrogram
 
 from boomspeaver.tools.plot.configs import Axis, Line, Plotter, Points, Subplot
 from boomspeaver.tools.plot.multi_plotter import MultiPlotter
@@ -62,6 +62,48 @@ def detect_signal_bounds(
     start_idx = np.argmax(above_threshold)
     end_idx = len(signal) - np.argmax(above_threshold[::-1]) - 1
     return start_idx, end_idx
+
+
+def process_signal_in_chunks(
+    signal: np.ndarray,
+    chunk_size: int,
+    overlap: int,
+    transform_function: Callable,
+    *func_args
+) -> np.ndarray:
+    """Processes the signal with a given impedance model and returns the current signal."""
+    current_signal = np.zeros_like(signal)
+
+    num_chunks = (len(signal) - overlap) // (chunk_size - overlap)
+
+    for i in range(num_chunks):
+        start_idx = i * (chunk_size - overlap)
+        end_idx = start_idx + chunk_size
+        chunk = signal[start_idx:end_idx]
+
+        window = get_window("hann", len(chunk))
+        chunk_windowed = chunk * window
+
+        current_chunk = transform_function(chunk_windowed, *func_args)
+
+        current_signal[start_idx:end_idx] = current_chunk
+
+    return current_signal
+
+
+def chunk_signal(signal: np.ndarray, chunk_size: int, overlap: int):
+    """Generator that yields chunks of the signal with optional overlap."""
+    num_chunks = (len(signal) - overlap) // (chunk_size - overlap)
+
+    for i in range(num_chunks):
+        start_idx = i * (chunk_size - overlap)
+        end_idx = start_idx + chunk_size
+        chunk = signal[start_idx:end_idx]
+
+        window = hann(len(chunk))
+        chunk_windowed = chunk * window
+
+        yield chunk_windowed
 
 
 def normalize(signal: np.ndarray) -> np.ndarray:
