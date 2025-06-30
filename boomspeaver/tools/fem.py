@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any, Callable
 
+import gmsh
 import numpy as np
 import ufl
 from dolfinx import fem, io, mesh
@@ -26,15 +27,126 @@ def load_mesh(mesh_input_path: Path | None, dim: int = 2) -> mesh.Mesh:
     return domain
 
 
-def get_default_rectangle() -> mesh.Mesh:
-    nx, ny = 500, 500
-    # nx, ny = 1000, 1000
+def get_default_rectangle(x: int = 10, y: int = 10, mesh_size: int = 500) -> mesh.Mesh:
+    """Create default membrane for testing."""
     domain = mesh.create_rectangle(
         MPI.COMM_WORLD,
-        [np.array([-10, -10]), np.array([10, 10])],
-        [nx, ny],
+        [np.array([-x / 2, -y / 2]), np.array([x / 2, y / 2])],
+        [mesh_size, mesh_size],
         mesh.CellType.triangle,
     )
+    return domain
+
+
+def create_circular_mesh(
+    radius: float, mesh_size: float, output_dir: Path
+) -> mesh.Mesh:
+    """Create circle geometry, mesh, save in output directory and return mesh."""
+    assert isinstance(output_dir, Path)
+    output_path = str(output_dir / "circle.msh")
+    if not gmsh.isInitialized():
+        gmsh.initialize()
+    gmsh.model.add("circle")
+
+    center = (0, 0, 0)
+    disk = gmsh.model.occ.addDisk(*center, radius, radius)
+    gmsh.model.occ.synchronize()
+
+    gmsh.model.addPhysicalGroup(2, [disk], tag=1)
+    gmsh.model.setPhysicalName(2, 1, "Membrane")
+
+    gmsh.model.mesh.setSize(gmsh.model.getEntities(0), mesh_size)
+    gmsh.model.mesh.generate(2)
+
+    gmsh.write(str(output_path))
+    if gmsh.isInitialized():
+        gmsh.finalize()
+
+    domain = load_mesh(Path(output_path))
+    return domain
+
+def create_annulus_mesh(
+    outer_radius: float,
+    inner_radius: float,
+    mesh_size: float,
+    output_dir: Path
+):
+    """Create a 2D ring mesh (outer circle with cut-out inner circle)."""
+    assert isinstance(output_dir, Path)
+    output_path = str(output_dir / "annulus.msh")
+
+    if not gmsh.isInitialized():
+        gmsh.initialize()
+    gmsh.model.add("annulus")
+
+    center = (0, 0, 0)
+    outer = gmsh.model.occ.addDisk(*center, outer_radius, outer_radius)
+    inner = gmsh.model.occ.addDisk(*center, inner_radius, inner_radius)
+
+    ring, _ = gmsh.model.occ.cut([(2, outer)], [(2, inner)])
+    gmsh.model.occ.synchronize()
+
+    ring_tag = ring[0][1]
+    gmsh.model.addPhysicalGroup(2, [ring_tag], tag=1)
+    gmsh.model.setPhysicalName(2, 1, "Membrane")
+
+    boundary_curves = gmsh.model.getBoundary(ring, oriented=False, recursive=True)
+
+    curve_tags = [c[1] for c in boundary_curves]
+    gmsh.model.addPhysicalGroup(1, curve_tags, tag=2)
+    gmsh.model.setPhysicalName(1, 2, "Boundary")
+
+    gmsh.model.mesh.setSize(gmsh.model.getEntities(0), mesh_size)
+    gmsh.model.mesh.generate(2)
+
+    gmsh.write(output_path)
+    if gmsh.isInitialized():
+        gmsh.finalize()
+
+
+    domain = load_mesh(Path(output_path))
+    return domain
+
+
+def create_circular_3d_membrane_mesh(
+    radius: float, mesh_size: float, thickness: float, output_dir: Path
+) -> mesh.Mesh:
+    """Create 3D circular membrane mesh by extruding 2D disk, save and load as dolfinx mesh."""
+
+    assert isinstance(output_dir, Path)
+    output_path = str(output_dir / "circular_membrane.msh")
+
+    if not gmsh.isInitialized():
+        gmsh.initialize()
+
+    gmsh.model.add("circular_membrane")
+
+    center = (0, 0, 0)
+    disk = gmsh.model.occ.addDisk(*center, radius, radius)
+    gmsh.model.occ.synchronize()
+
+    extruded_entities = gmsh.model.occ.extrude([(2, disk)], 0, 0, thickness)
+    gmsh.model.occ.synchronize()
+
+    volumes = [ent for ent in extruded_entities if ent[0] == 3]
+    gmsh.model.addPhysicalGroup(3, [v[1] for v in volumes], tag=1)
+    gmsh.model.setPhysicalName(3, 1, "MembraneVolume")
+
+    surfaces = [ent for ent in extruded_entities if ent[0] == 2]
+    gmsh.model.addPhysicalGroup(2, [s[1] for s in surfaces], tag=2)
+    gmsh.model.setPhysicalName(2, 2, "MembraneSurface")
+
+    points = gmsh.model.getEntities(0)
+    gmsh.model.mesh.setSize(points, mesh_size)
+
+    gmsh.model.mesh.generate(3)
+
+    gmsh.write(output_path)
+
+    if gmsh.isInitialized():
+        gmsh.finalize()
+
+    domain = load_mesh(Path(output_path), dim=3)
     return domain
 
 
@@ -77,6 +189,7 @@ def wave_equation(
     dt: float,
     c: int = 343,
     force: fem.function.Function | None = None,
+    damping_coefficient: float | None = None,
 ) -> tuple[ufl.form.Form, ufl.form.Form]:
     """Define time dependent wave equation."""
     u, v = ufl.TrialFunction(V), ufl.TestFunction(V)
@@ -89,6 +202,9 @@ def wave_equation(
     l = 2 * u1 * v * ufl.dx - u0 * v * ufl.dx
     if force is not None:
         l += force * v * ufl.dx
+    if damping_coefficient is not None:
+        gamma = fem.Constant(domain, PETSc.ScalarType(damping_coefficient))
+        a += gamma * ufl.inner(u, v) * ufl.ds
     return a, l
 
 
@@ -102,6 +218,8 @@ def convert_to_form(input_forms: list[ufl.form.Form]) -> list[fem.forms.Form]:
 # Boundary Conditions
 def set_bcs(name: str, domain: mesh.Mesh, V: fem.FunctionSpace):
     """Set boundary conditions on all surfaces."""
+    if name is None:
+        return None
     assert name in {"neumann", "dirichlet", "robin"}
     fdim = domain.topology.dim - 1
     boundary_facets = mesh.locate_entities_boundary(

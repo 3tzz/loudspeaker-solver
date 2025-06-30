@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import soundfile as sf
 from dotenv import load_dotenv
 
@@ -37,6 +38,37 @@ def save_json_file(output_path: Path, data: dict | list) -> None:
         raise IOError(f"Failed to save JSON file: {e}") from e
 
 
+def load_csv_file(input_path: Path, header: bool = False) -> pd.DataFrame:
+    """Load CSV file into pandas DataFrame."""
+    assert isinstance(input_path, Path)
+    assert input_path.exists()
+    assert input_path.suffix == ".csv"
+
+    try:
+        if header:
+            df = pd.read_csv(input_path)
+        else:
+            df = pd.read_csv(input_path, header=None)
+    except Exception as e:
+        raise IOError(f"Failed to load CSV file: {e}") from e
+
+    return df
+
+
+def save_csv_file(output_path: Path, df: pd.DataFrame) -> None:
+    """Save pandas DataFrame to CSV file."""
+    assert isinstance(output_path, Path)
+    assert output_path.suffix == ".csv"
+    assert isinstance(df, pd.DataFrame)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        df.to_csv(output_path, index=False)
+    except Exception as e:
+        raise IOError(f"Failed to save CSV file: {e}") from e
+
+
 def load_numpy_file(input_path: Path) -> np.ndarray:
     """Load numpy array from file."""
     assert isinstance(input_path, Path)
@@ -54,6 +86,18 @@ def save_numpy_file(output_path: Path, data: np.ndarray) -> None:
         np.save(output_path, data)
     except Exception as e:
         raise IOError(f"Failed to save numpy file: {e}") from e
+
+
+def pad_vector(vector_to_pad: np.ndarray, reference_vector: np.ndarray) -> np.ndarray:
+    """Pad vector according to reference vector length."""
+    pad_length = len(reference_vector) - len(vector_to_pad)
+
+    if pad_length > 0:
+        return np.pad(vector_to_pad, (0, pad_length), mode="constant")
+    elif pad_length == 0:
+        return vector_to_pad
+    else:
+        raise ValueError("Provided vector to pad is longer than reference.")
 
 
 def load_wave_file(file_path: Path) -> tuple[np.ndarray, int]:
@@ -76,18 +120,6 @@ def save_wave_file(file_path: Path, fs: int, data: np.ndarray) -> None:
     )
     file_path.parent.mkdir(parents=True, exist_ok=True)
     sf.write(file=str(file_path), data=data, samplerate=fs)
-
-
-def pad_vector(vector_to_pad: np.ndarray, reference_vector: np.ndarray) -> np.ndarray:
-    """Pad vector according to reference vector length."""
-    pad_length = len(reference_vector) - len(vector_to_pad)
-
-    if pad_length > 0:
-        return np.pad(vector_to_pad, (0, pad_length), mode="constant")
-    elif pad_length == 0:
-        return vector_to_pad
-    else:
-        raise ValueError("Provided vector to pad is longer than reference.")
 
 
 def get_value_from_dict(data: dict, *keys, default=None) -> Any:

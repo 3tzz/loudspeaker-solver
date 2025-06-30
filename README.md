@@ -89,5 +89,3 @@ Represents loudspeaker mechanical converter. This part transforms **magnetic for
 - `oscillation_euler.py` – signal magnetic_force-to-membrane_oscillation converter for loudspeaker signals. ODE numeric solver using Euler Forward method.
 
 ### Acoustic
-
-### Tools

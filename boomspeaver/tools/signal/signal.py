@@ -1,5 +1,7 @@
 from typing import Any, Callable
 
+import librosa
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.fft import fft, fftfreq
 from scipy.signal import butter, filtfilt, find_peaks, get_window, spectrogram
@@ -24,10 +26,159 @@ def fft_analysis(signal: np.ndarray, sampling_rate: int) -> tuple[np.ndarray, An
     return freqs[: n // 2], 2.0 / n * np.abs(fft_values[: n // 2])
 
 
+def stft(
+    signal: np.ndarray,
+    sampling_rate: int,
+    n_fft: int = 2048,
+    win_length: int = 2048,
+    hop_length: int = 512,
+) -> np.ndarray:
+    """Calculate STFT and frequencies from signal."""
+    assert isinstance(sampling_rate, int)
+    assert isinstance(n_fft, int)
+    assert isinstance(win_length, int)
+    assert isinstance(hop_length, int)
+    validate_signal(signal)
+    signal = signal.astype(np.float32)
+
+    freqs = librosa.fft_frequencies(sr=sampling_rate, n_fft=n_fft)
+
+    spec = librosa.stft(signal, n_fft=n_fft, hop_length=hop_length)
+    return freqs, spec
+
+
+def istft(
+    spec: np.ndarray,
+    length: int,
+    n_fft: int = 2048,
+    win_length: int = 2048,
+    hop_length: int = 512,
+) -> np.ndarray:
+    """Calculate inverse STFT to reconstruct time-domain signal."""
+    assert isinstance(n_fft, int)
+    assert isinstance(win_length, int)
+    assert isinstance(hop_length, int)
+    assert isinstance(spec, np.ndarray)
+    assert np.iscomplexobj(spec)
+
+    signal = librosa.istft(
+        spec, hop_length=hop_length, win_length=win_length, length=length
+    )
+    signal = signal.astype(np.float32)
+    return signal
+
+
+def plot_spectrogram(
+    spec: np.ndarray, sampling_rate: int, hop_length: int = 512, y_axis: str = "log"
+):
+    """Plot spectrogram from STFT result."""
+    spec_db = librosa.amplitude_to_db(np.abs(spec), ref=np.max)
+
+    plt.figure(figsize=(10, 5))
+    librosa.display.specshow(
+        spec_db,
+        sr=sampling_rate,
+        hop_length=hop_length,
+        x_axis="time",
+        y_axis=y_axis,  # can be "log", "linear", "mel", etc.
+        cmap="magma",
+    )
+    plt.colorbar(format="%+2.0f dB")
+    plt.title("Spectrogram")
+    plt.tight_layout()
+    plt.show()
+
+
+def amplitude_to_db(spec: np.ndarray, top_db: int = 80) -> np.ndarray:
+    """Convert an amplitude spectrogram to dB-scaled spectrogram."""
+    assert isinstance(spec, np.ndarray)
+    assert len(spec.shape) == 2
+    return librosa.amplitude_to_db(np.abs(spec), ref=np.max, top_db=top_db)
+
+
+def db_to_amplitude(db_spec: np.ndarray) -> np.ndarray:
+    """Convert a dB-scaled spectrogram back to amplitude spectrogram using librosa."""
+    assert isinstance(db_spec, np.ndarray)
+    assert len(db_spec.shape) == 2
+    amplitude_spec = librosa.db_to_amplitude(db_spec, ref=1.0)
+    return amplitude_spec
+
+
 def get_resolution(vector: np.ndarray) -> float:
     """Get resolution behind values from vector."""
     validate_signal(vector)
     return float(np.mean(np.diff(vector)))
+
+
+def stft_analysis(
+    signal: np.ndarray,
+    sampling_rate: int,
+    n_fft: int = 2048,
+    top_db_threshold: int = 80,
+    win_length: int = 2048,
+    hop_length: int = 512,
+):
+    validate_signal(signal)
+    assert isinstance(n_fft, int)
+    assert isinstance(win_length, int)
+    assert isinstance(hop_length, int)
+    assert isinstance(sampling_rate, int)
+    assert isinstance(top_db_threshold, int) and top_db_threshold > 0
+
+    freqs, spec = stft(
+        signal=signal,
+        sampling_rate=sampling_rate,
+        n_fft=n_fft,
+        win_length=win_length,
+        hop_length=hop_length,
+    )
+
+    spec_amp = np.abs(spec)
+    spec_angle = np.angle(spec)
+
+    spec_mag_db = amplitude_to_db(spec=spec_amp, top_db=top_db_threshold)
+
+    for idx, val in enumerate(spec_mag_db):
+        print(idx, val)
+        raise
+
+    spec_mag = db_to_amplitude(db_spec=spec_mag_db)
+
+    reconstructed_spec = spec_mag * np.exp(1j * spec_angle)
+    # filtered_signal = istft(
+    #     spec=reconstructed_spec, length=len_signal, hop_length=hop_length
+    # ) # for sanity check
+    pass
+
+
+def extract_top_frequencies(
+    freqs: np.ndarray, spec: np.ndarray, top_percent: float = 5.0
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Extracts the most significant frequencies per time frame based on magnitude according to percentage.
+    """
+    assert isinstance(spec, np.ndarray)
+    assert len(spec.shape) == 2
+    assert isinstance(freqs, np.ndarray)
+    assert isinstance(top_percent, float)
+    assert 0 < top_percent < 100
+
+    # Use max energy across time for each frequency bin
+    max_energies = np.max(spec, axis=1)
+
+    # Determine energy threshold for top X%
+    threshold = np.percentile(max_energies, top_percent)
+
+    # Mask and extract
+    mask = max_energies >= threshold
+    selected_freqs = freqs[mask]
+    selected_weights = max_energies[mask]
+
+    # Combine and sort by descending weight
+    result = sorted(
+        zip(selected_freqs, selected_weights), key=lambda x: x[1], reverse=True
+    )
+    return result
 
 
 def detect_peaks(signal: np.ndarray, height: float = None, threshold: float = None):
@@ -179,6 +330,7 @@ def main():
 
     # Perform FFT analysis
     freqs, amplitudes = fft_analysis(signal, sampling_rate)
+    spec_freqs, spec = stft(signal, sampling_rate)
 
     idxes, filtered_signal = detect_peaks(amplitudes)
     filtered_freqs = freqs[idxes]

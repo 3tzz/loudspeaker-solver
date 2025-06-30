@@ -119,10 +119,28 @@ python boomspeaver/electromagnetic/magnetic_force.py \
 echo "Running Mechanical Converter..."
 echo
 
-MECHANICAL_PATH="${WORK_DIR}/mechanical_displacement.npy"
+MECHANICAL_PATH="${WORK_DIR}/mechanical.npy"
 MODE="euler"
 
 python boomspeaver/mechanical/oscillation_$MODE.py \
   --input_signal_path $MAGNETIC_FORCE_PATH \
   --loudspeaker_params $LOUDSPEAKER_CONFIG_PATH \
   --output_path $MECHANICAL_PATH
+
+echo "Running Acoustic Converter..."
+echo
+
+ACOUSTIC_TEMP="${WORK_DIR}/acoustic/"
+if [[ ! -d "$ACOUSTIC_TEMP" ]]; then
+  mkdir -p "$ACOUSTIC_TEMP" || { echo "Failed to create working directory."; exit 1; }
+fi
+ACOUSTIC_PATH="${ACOUSTIC_TEMP}/membrane.xdmf"
+MECHANICAL_DISPLACEMENT_PATH="${WORK_DIR}/mechanical.x.npy"
+MODE="dynamic"
+
+./run_fenics.sh -c boomspeaver/acoustic/the_membrane.py \
+  --time_input_path examples/time_vector_1s_48kHz.npy \
+  --signal_input_path $MECHANICAL_DISPLACEMENT_PATH \
+  --loudspeaker_params_path $LOUDSPEAKER_CONFIG_PATH \
+  --output_path $ACOUSTIC_PATH \
+  --shape_profile $MODE \
