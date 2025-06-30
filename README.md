@@ -82,8 +82,11 @@ Represents loudspeaker electromagnetic converter part that transforms **audio si
 - `calculate_coil_current.py` – signal voltage-to-current converter for loudspeaker signals
 - `magnetic_force.py` – signal current-to-magnetic force converter for loudspeaker signals
 
-
 ### Mechanical
+
+Represents loudspeaker mechanical converter. This part transforms **magnetic force** to **mechanical oscillation**. According to loudspeaker parameters from [loudspeaker database site](https://loudspeakerdatabase.com).
+
+- `oscillation_euler.py` – signal magnetic_force-to-membrane_oscillation converter for loudspeaker signals. ODE numeric solver using Euler Forward method.
 
 ### Acoustic
 

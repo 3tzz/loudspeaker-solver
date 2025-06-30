@@ -116,6 +116,13 @@ python boomspeaver/electromagnetic/magnetic_force.py \
   --loudspeaker_params $LOUDSPEAKER_CONFIG_PATH \
   --output_path $MAGNETIC_FORCE_PATH
 
+echo "Running Mechanical Converter..."
+echo
 
+MECHANICAL_PATH="${WORK_DIR}/mechanical_displacement.npy"
+MODE="euler"
 
-
+python boomspeaver/mechanical/oscillation_$MODE.py \
+  --input_signal_path $MAGNETIC_FORCE_PATH \
+  --loudspeaker_params $LOUDSPEAKER_CONFIG_PATH \
+  --output_path $MECHANICAL_PATH
