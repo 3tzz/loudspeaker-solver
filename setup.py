@@ -14,5 +14,7 @@ setup(
         "soundfile",
         "scipy",
         "dotenv",
+        "librosa",
+        "pandas",
     ],
 )

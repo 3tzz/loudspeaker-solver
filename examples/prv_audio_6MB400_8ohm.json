@@ -30,9 +30,9 @@
     },
     "power_handling": {
       "P": 200,
-      "unit": "W",
       "Pmax": 400,
-      "Ppeak": 800
+      "Ppeak": 800,
+      "unit": "W"
     }
   },
   "voice_coil": {
@@ -79,8 +79,37 @@
       "unit": "mm"
     },
     "effective_area": {
-      "SD": 147,
-      "unit": "cm²"
+      "SD": 0.0147,
+      "unit": "m²"
+    },
+    "material": {
+      "type": "paper",
+      "density": {
+        "rho": 920,
+        "unit": "kg/m³"
+      },
+      "thickness": {
+        "h": 0.5,
+        "unit": "mm"
+      },
+      "youngs_modulus": {
+        "E": 9730000000,
+        "unit": "Pa"
+      }
+    }
+  },
+  "suspensions": {
+    "stiffness": {
+      "KMS": 5350,
+      "unit": "N/m"
+    },
+    "compliance": {
+      "CMS": 0.000187,
+      "unit": "m/N"
+    },
+    "mechanical_resistance": {
+      "RMS": 0.81,
+      "unit": "N*s/m"
     }
   },
   "moving_mass": {

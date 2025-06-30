@@ -1,0 +1,14 @@
+{
+  "room": {
+    "length": 8000,
+    "width": 8000,
+    "height": 4000,
+    "unit": "mm"
+  },
+  "box": {
+    "length": 411,
+    "width": 548,
+    "height": 700,
+    "unit": "mm"
+  }
+}

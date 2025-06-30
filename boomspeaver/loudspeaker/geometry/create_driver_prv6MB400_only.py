@@ -1,9 +1,5 @@
 # pylint: disable=invalid-name
 
-
-import json
-from typing import Any
-
 import FreeCAD as App
 import numpy as np
 import Part
@@ -37,17 +33,18 @@ def remove_parts(parts_to_remove):
     doc = App.activeDocument()
     for obj in doc.Objects:
         if obj.Name in parts_to_remove:
-            doc.removeObject(obj.Name)  # Use Name instead of reference
+            doc.removeObject(obj.Name)
     doc.recompute()
 
 
-def load_json_file(input_path):
-    with open(input_path, "r", encoding="utf-8") as f:
-        loaded_data = json.load(f)
-    return loaded_data
+def merge_parts(loudspeaker_parts, parts_to_merge, merged_part_name="merged_part"):
+    """
+    Merge specified parts into a single solid object.
+    """
+    raise NotImplemented
 
 
-class LoudspeakerDriver:
+class LoudspeakerSchema:
     def __init__(
         self,
         membrane_r1,
@@ -90,21 +87,9 @@ class LoudspeakerDriver:
 def create_membrane(schema):
     if schema.membrane_is_cone:
         # Create membrane as a cone
-        membrane_outer = Part.makeCone(
-            schema.membrane_r2, schema.membrane_r1, schema.membrane_h
+        membrane = Part.makeCone(
+            schema.membrane_r1, schema.membrane_r2, schema.membrane_h
         )
-
-        # Inner cone (smaller by 1mm thickness)
-        thickness = 1.0  # [mm]
-        membrane_inner = Part.makeCone(
-            schema.membrane_r2 - thickness,
-            schema.membrane_r1 - thickness,
-            schema.membrane_h + thickness,
-        )
-
-        # Subtract inner cone from outer cone
-        membrane = membrane_outer.cut(membrane_inner)
-
     else:
         membrane_h = (
             1  # default value not provided maybe should be smaller to check TODO
@@ -197,7 +182,7 @@ def create_cylinder(schema):
     if schema.cylinder_r_outer and schema.cylinder_h:
         cylinder = Part.makeCylinder(schema.cylinder_r_outer, schema.cylinder_h)
         # Position the cylinder at the correct place (centered)
-        # cylinder.translate(App.Vector(0, 0, 1))
+        cylinder.translate(App.Vector(0, 0, -1))  # TODO: do it smarter
         return cylinder
     return None
 
@@ -276,7 +261,6 @@ def create_loudspeaker(schema):
     return parts
 
 
-# TODO to check
 def calculate_cone_field(coil_radius, membrane_radius, membrane_h):
     imagine_h = (
         (membrane_h * membrane_radius) - (membrane_h * coil_radius)
@@ -289,180 +273,65 @@ def calculate_cone_field(coil_radius, membrane_radius, membrane_h):
     return cone_side_field
 
 
-def create_room(loudspeaker_driver, size=(8000, 8000, 4000)):
-    """Create a room with specified dimensions (width, length, height)."""
-    length = size[0]
-    width = size[1]
-    height = size[2]
-    room = Part.makeBox(length, height, width)
-    room.translate(
-        App.Vector(
-            -(length / 2),
-            -((loudspeaker_driver.cylinder_h * 10) / 2),
-            loudspeaker_driver.cylinder_h - loudspeaker_driver.membrane_r1 * 4,
-        )
-    )
-    return room
+# https://loudspeakerdatabase.com/PRV/6MB400
+magnet_with_ferro = 115  # [mm]
+driver_height = 70  # [mm]
+air_gap = 8  # [mm]
+coil_height = 12  # [mm]
+coil_diameter = 38  # [mm]
+driver_height = 70  # [mm]
+whole_membrane_diameter = 143  # [mm] , real
+membrane_diameter = 137  # [mm] , effective
 
+# effective membrane radius (137%2)=68.5
+# effective coil radius 38%2=19
+# Temporary H proportion (93÷188) ×70 = 34.627659574
 
-def create_surrounding_box(loudspeaker_driver):
-    r = loudspeaker_driver.membrane_r1
-    h = loudspeaker_driver.cylinder_h
-    width = r * 3
-    depth = h * 10
-    height = r * 4
+# custom parameters
+ferro_thickness = air_gap
+air_width = air_gap
+coil_width = 1
+driver_height_without_membrane = 35
 
-    surrounding_box = Part.makeBox(
-        width,
-        depth,
-        height,
-    )
+magnet_h = driver_height - driver_height_without_membrane - 2 * ferro_thickness
+split_air_skip_coil = True
 
-    surrounding_box.translate(
-        App.Vector(
-            -(width / 2), -(depth / 2), -(height - loudspeaker_driver.cylinder_h) - 1
-        )
-    )
-    return surrounding_box
+# Example with flat membrane (set membrane_is_cone=False)
+schema = LoudspeakerSchema(
+    membrane_r1=membrane_diameter,
+    membrane_r2=coil_diameter,
+    membrane_h=driver_height - driver_height_without_membrane,  # Corrected expression
+    membrane_is_cone=False,  # Change this flag to False to use flat membrane
+    coil_r_outer=coil_diameter,
+    coil_r_inner=coil_diameter - coil_width,
+    coil_h=coil_height,
+    coil_embed=0.5,  # percentage of magnet_h
+    magnet_r_outer=magnet_with_ferro - ferro_thickness,
+    magnet_r_inner=coil_diameter + air_width,
+    magnet_h=magnet_h,
+    ferro_thickness=ferro_thickness,
+    air_gap=air_gap,
+    split_air_field=True,
+    merge_ferro=True,
+    cylinder_r_outer=whole_membrane_diameter,
+    cylinder_h=driver_height + 1,
+)
 
+loudspeaker_parts = create_loudspeaker(schema)
 
-def get_loudspeaker_driver(
-    loudspeaker_driver_parameters: dict[str, Any],
-    loudspeaker_geometry_parameters: dict[str, Any],
-    cone_membrane: bool = True,
-) -> LoudspeakerDriver:
-    magnet_with_ferro = loudspeaker_geometry_parameters["magnet_with_ferro"][
-        "width"
-    ]  # [mm]
-    driver_height = loudspeaker_geometry_parameters["driver"]["height"]  # [mm]
+base_part = "cylinder"
+parts_to_cut = [
+    "magnet",
+    "ferro",
+    "ferro_inside",
+    "air_field",
+]  # ,"coil", "ferro", "ferro_inside"]
 
-    air_gap = loudspeaker_driver_parameters["magnet"]["air_gap_height"]["HAG"]  # [mm]
-    coil_height = loudspeaker_driver_parameters["voice_coil"]["winding_height"][
-        "HVC"
-    ]  # [mm]
-    coil_diameter = loudspeaker_driver_parameters["voice_coil"]["VC_diameter"][
-        "diameter"
-    ]  # [mm]
-    whole_membrane_diameter = 143  # [mm] , real
-    membrane_diameter = loudspeaker_driver_parameters["diaphragm"][
-        "effective_diameter"
-    ][
-        "diameter"
-    ]  # [mm]
+if split_air_skip_coil:
+    cut_parts_from_loudspeaker(loudspeaker_parts, "air_field", ["ferro_inside"])
+# else:
+#     cut_parts_from_loudspeaker(loudspeaker_parts, "air_field", ["ferro_inside", "coil"])
+cut_parts_from_loudspeaker(loudspeaker_parts, base_part, parts_to_cut)
+remove_parts([base_part, "membrane", "coil", "air_field"])
 
-    # effective membrane radius (137%2)=68.5
-    # effective coil radius 38%2=19
-    # Temporary H proportion (93÷188) ×70 = 34.627659574
-
-    ferro_thickness = loudspeaker_geometry_parameters["ferromagnetic"]["width"]
-    coil_width = loudspeaker_geometry_parameters["voice_coil"]["width"]
-    driver_height_without_membrane = loudspeaker_geometry_parameters["driver"][
-        "height_wo_diameter_cylinder"
-    ]
-
-    # Custom parameters
-    magnet_h = driver_height - driver_height_without_membrane - 2 * ferro_thickness
-    air_width = air_gap
-
-    # Example with flat membrane (set membrane_is_cone=False)
-    loudspeaker_driver = LoudspeakerDriver(
-        membrane_r1=membrane_diameter,
-        membrane_r2=coil_diameter,
-        membrane_h=driver_height - driver_height_without_membrane,
-        membrane_is_cone=cone_membrane,
-        coil_r_outer=coil_diameter,
-        coil_r_inner=coil_diameter - coil_width,
-        coil_h=coil_height,
-        coil_embed=0.5,  # percentage of magnet_h
-        magnet_r_outer=magnet_with_ferro - ferro_thickness,
-        magnet_r_inner=coil_diameter + air_width,
-        magnet_h=magnet_h,
-        ferro_thickness=ferro_thickness,
-        air_gap=air_gap,
-        split_air_field=True,
-        merge_ferro=True,
-        cylinder_r_outer=whole_membrane_diameter,
-        cylinder_h=driver_height + 2,
-    )
-
-    return loudspeaker_driver
-
-
-def create_loudspeaker_driver(
-    loudspeaker_driver: LoudspeakerDriver,
-    box: bool = True,
-    room: bool = True,
-    without_fillers: bool = True,
-):
-
-    loudspeaker_parts = create_loudspeaker(loudspeaker_driver)
-    base_part = "cylinder"
-    parts_to_cut = ["magnet", "ferro", "ferro_inside", "air_field", "coil"]
-    cut_parts_from_loudspeaker(loudspeaker_parts, base_part, parts_to_cut)
-
-    if box:
-        doc = App.activeDocument()
-        surrounding_box = create_surrounding_box(loudspeaker_driver)
-        box_obj = doc.addObject("Part::Feature", "box")
-        box_obj.Shape = surrounding_box
-
-        cut_object = doc.addObject("Part::Feature", "box_cut")
-        cut_object.Shape = box_obj.Shape.cut(loudspeaker_parts["cylinder"])
-        doc.recompute()
-    if room:
-        doc = App.activeDocument()
-        room = create_room(loudspeaker_driver)
-        room_obj = doc.addObject("Part::Feature", "room")
-        room_obj.Shape = room
-        room_cut = doc.addObject("Part::Feature", "room_cut")
-        room_cut.Shape = room_obj.Shape.cut(surrounding_box)
-        room_cut.Shape = room_cut.Shape.cut(loudspeaker_parts["cylinder"])
-        doc.recompute()
-
-    if without_fillers:
-        remove_parts(
-            [
-                "air_field",
-                "box",
-                # "cylinder",
-                "cylinder_cut",
-                "room",
-            ]
-        )
-
-
-if __name__ == "__main__":
-
-    # This script is strange because u should run it in FreeCad python console using command:
-    # exec(open("/absolute/path/to/loudspeaker-solver/boomspeaver/loudspeaker/geometry/create_driver_prv6MB400.py").read())
-
-    # https://loudspeakerdatabase.com/PRV/6MB400
-    input_parameter_path = "absolute/path/to/examples/loudspeaker-solver/examples/prv_audio_6MB400_8ohm.json"
-    input_parameter_path = "/home/freetzz/repo/ls_wip/loudspeaker-solver/examples/prv_audio_6MB400_8ohm.json"
-    loudspeaker_driver_parameters = load_json_file(input_parameter_path)
-
-    input_ls_geometry_path = "absolute/path/to/examples/loudspeaker-solver/examples/prv_audio_6MB400_8ohm_geometry.json"
-    input_ls_geometry_path = "/home/freetzz/repo/ls_wip/loudspeaker-solver/examples/prv_audio_6MB400_8ohm_geometry.json"
-    loudspeaker_geometry_parameters = load_json_file(input_ls_geometry_path)
-
-    input_room_geometry_path = "absolute/path/to/examples/loudspeaker-solver/examples/prv_audio_6MB400_8ohm_geometry.json"
-    input_room_geometry_path = (
-        "/home/freetzz/repo/ls_wip/loudspeaker-solver/examples/room_geometry.json"
-    )
-    room_geometry_parameters = load_json_file(input_room_geometry_path)
-
-    # Setup parameters
-    cone_membrane = True
-    room = True
-    box = True
-
-    loudspeaker_driver = get_loudspeaker_driver(
-        loudspeaker_driver_parameters=loudspeaker_driver_parameters,
-        loudspeaker_geometry_parameters=loudspeaker_geometry_parameters,
-        cone_membrane=cone_membrane,
-    )
-    create_loudspeaker_driver(
-        loudspeaker_driver=loudspeaker_driver,
-        box=box,
-        room=room,
-    )
+# exec(open("/home/freetzz/repo/fenics/geometric/loudspeaker_driver/create_driver_prv6MB400_cyl.py").read())

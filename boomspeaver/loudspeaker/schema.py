@@ -110,12 +110,36 @@ class Magnet:
 class Diaphragm:
     diameter: float  # effective diameter [mm]
     SD: float  # effective area [cm²]
+    material: str  # material type
+    rho: float  # density [kg/m³]
+    thickness: float  # membrane thickness [mm]
+    E: float  # Young's modulus [Pa]
 
     def __init__(self, data: dict[str, Any]):
         self.diameter = get_value_from_dict(
             data, "diaphragm", "effective_diameter", "diameter"
         )
         self.SD = get_value_from_dict(data, "diaphragm", "effective_area", "SD")
+        self.material = get_value_from_dict(data, "diaphragm", "material", "type")
+        self.h = get_value_from_dict(data, "diaphragm", "material", "thickness", "h")
+        self.rho = get_value_from_dict(data, "diaphragm", "material", "density", "rho")
+        self.E = get_value_from_dict(
+            data, "diaphragm", "material", "youngs_modulus", "E"
+        )
+
+
+@dataclass
+class Suspensions:
+    stiffness: float  # suspensions stiffness [N/m]
+    compliance: float  # suspensions compliance [m/N]
+    rms: float  # mechanical resistance [N*s/m]
+
+    def __init__(self, data: dict[str, Any]):
+        self.KMS = get_value_from_dict(data, "suspensions", "stiffness", "KMS")
+        self.CMS = get_value_from_dict(data, "suspensions", "compliance", "CMS")
+        self.rms = get_value_from_dict(
+            data, "suspensions", "mechanical_resistance", "RMS"
+        )
 
 
 @dataclass
@@ -139,6 +163,7 @@ class Loudspeaker:
         self.magnet = Magnet(data)
         self.diaphragm = Diaphragm(data)
         self.moving_mass = MovingMass(data)
+        self.suspensions = Suspensions(data)
 
     @classmethod
     def from_json(cls, input_path: Path) -> "Loudspeaker":
