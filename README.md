@@ -40,7 +40,7 @@ docker compose down
 ```bash
 cd &{ROOT_DIR}
 source .venv/bin/activate
-./run.sh -s examples/cosine_wave.wav  -l examples/prv_audio_6MB400_8ohm.json
+./run.sh -s examples/cosine_wave.wav  -l examples/prv_audio_6MB400_8ohm.json -o output -i examples/electrical_impedance.csv
 ```
 
 ### Run fenics scripts
@@ -80,7 +80,7 @@ Example loudspeaker `PRV Audio 6MB400` file with parameters created in [reposito
 Represents loudspeaker electromagnetic converter part that transforms **audio signal** to **electric current** at first and then to **magnetic force**. According to loudspeaker parameters from [loudspeaker database site](https://loudspeakerdatabase.com).
 
 - `calculate_coil_current.py` – signal voltage-to-current converter for loudspeaker signals
-- `magnetic_force.py` –
+- `magnetic_force.py` – signal current-to-magnetic force converter for loudspeaker signals
 
 
 ### Mechanical
