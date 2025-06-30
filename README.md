@@ -55,12 +55,13 @@ cd &{ROOT_DIR}
 Represents loudspeaker parameters. Real world resources u can find in [loudspeaker database site](https://loudspeakerdatabase.com).
 Example loudspeaker `PRV Audio 6MB400` file with parameters created in [repository](./examples/prv_audio_6MB400_8ohm.json) from [site](https://loudspeakerdatabase.com/PRV/6MB400).
 
-- `schema.py` – structure representing loudspeaker parameters
+- `schema.py` – structure representing loudspeaker parameters.
 - `geometry` – building geometry for **FreeCAD** python console API. Export parts manually in `.brep` extension.
   - `create_driver_prv6MB400_only.py`
   - `create_driver_prv6MB400_in_room.py`
 - `mesh` – create geometry mesh for **FEniCS** fem scripts
   - `loudspeaker_in_room_2D.py`
+- `electrical_impedance.py` – structure representing frequency dependent impedance eg. `examples/electrical_impedance.jpeg`
 
 #### Electromagnetic
 
