@@ -15,6 +15,14 @@ def calculate_maxwell_force(
     return force
 
 
+def calculate_maxwell_force_from_force_factor(
+    current_signal: np.ndarray, magnetic_force_factor: float
+) -> np.ndarray:
+    """Calculates the Maxwell force on the voice coil based on the current and magnetic force factor."""
+    force = current_signal * magnetic_force_factor
+    return force
+
+
 def magnetic_force(
     input_signal_path: Path, loudspeaker_params: Loudspeaker, output_path: Path
 ) -> None:
@@ -25,12 +33,13 @@ def magnetic_force(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     assert isinstance(loudspeaker_params, Loudspeaker)
 
-    coil_length = loudspeaker_params.voice_coil.HVC
-    magnetic_field = loudspeaker_params.magnet.Bl
+    magnetic_force_factor = loudspeaker_params.magnet.Bl
 
     signal = load_numpy_file(input_signal_path)
 
-    force_signal = calculate_maxwell_force(signal, coil_length, magnetic_field)
+    force_signal = calculate_maxwell_force_from_force_factor(
+        signal, magnetic_force_factor
+    )
 
     save_numpy_file(output_path=output_path, data=force_signal)
 
@@ -62,6 +71,6 @@ if __name__ == "__main__":
 
     magnetic_force(
         input_signal_path=Path(args.input_signal_path),
-        loudspeaker_params=args.loudspeaker_params,
+        loudspeaker_params=Loudspeaker.from_json(Path(args.loudspeaker_params)),
         output_path=Path(args.output_path),
     )

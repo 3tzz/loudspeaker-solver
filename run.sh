@@ -1,33 +1,121 @@
 #!/bin/bash
 
-# Default value for complex flag (1 = on, 0 = off)
-COMPLEX_MODE=1
+# Help function
+usage() {
+  echo ""
+  echo "Usage: $0 [-h] -s <signal_path.wav> -l <loudspeaker_config_path.json> -c <service_config_path.json>"
+  echo ""
+  echo "Options:"
+  echo "  -s <signal>   Path to input acoustic signal"
+  echo "  -l <loudspeaker_config>   Path to loudspeaker config file (required)"
+  echo "  -o <output_path>   Output path (required)"
+  echo "  -c <service_config>   Path to service config file (optional)"
+  echo "  -i <impedance_path>   Path to frequency dependent config file (optional)"
+  echo "  -h            Show this help message"
+  echo ""
+  echo "Positional Arguments:"
+  echo "  signal_path.py    Path to signal script"
+  echo ""
+  exit 1
+}
 
-# Parse arguments
-while getopts ":c" opt; do
+
+# Optional default value (can be empty or a path)
+SERVICE_CONFIG_PATH=""
+
+# Parse options (colon after c means it takes an argument)
+while getopts ":s:l:c:o:i:h" opt; do
   case ${opt} in
-  c)
-    COMPLEX_MODE=0
-    ;;
-  \?)
-    echo "Usage: $0 [-c to disable complex mode] <path_to_script.py>"
-    exit 1
-    ;;
+    s) SIGNAL_PATH="$OPTARG" ;;
+    l) LOUDSPEAKER_CONFIG_PATH="$OPTARG" ;;
+    o) OUTPUT_PATH="$OPTARG" ;;
+    c) SERVICE_CONFIG_PATH="$OPTARG" ;;
+    i) IMPEDANCE_PATH="$OPTARG" ;;
+    h) usage ;;
+    \?) echo "Invalid option: -$OPTARG" >&2; usage ;;
+    :) echo "Option -$OPTARG requires an argument." >&2; usage ;;
   esac
 done
 
-# Validate
+# Shift out parsed options
 shift $((OPTIND - 1))
-if [ -z "$1" ]; then
-  echo "Usage: $0 [-c to disable complex mode] <path_to_script.py>"
-  exit 1
+
+# Check signal is provided
+if [[ -z "$SIGNAL_PATH" ]]; then
+  echo "Error: -s <signal_path> is required."
+  usage
+fi
+
+# Check config is provided
+if [[ -z "$LOUDSPEAKER_CONFIG_PATH" ]]; then
+  echo "Error: -l <loudspeaker_config_path> is required."
+  usage
+fi
+
+# Check output path is provided
+if [[ -z "$OUTPUT_PATH" ]]; then
+  echo "Error: -o <output_path> is required."
+  usage
+fi
+
+# Debug output
+echo "Initializaiton .."
+echo "Signal path: $SIGNAL_PATH"
+echo "Loudspeaker config path: $LOUDSPEAKER_CONFIG_PATH"
+echo "Output path: $OUTPUT_PATH"
+if [[ -n "$SERVICE_CONFIG_PATH" ]]; then
+  echo "Service config path: $SERVICE_CONFIG_PATH"
+else
+  echo "Service config: not provided. Running default setup!"
+fi
+
+if [[ -n "$" ]]; then
+  echo "Impedance path: $IMPEDANCE_PATH"
+else
+  echo "Impedance path: not provided"
+fi
+
+# Create output directory if it doesn't exist
+if [[ ! -d "$OUTPUT_PATH" ]]; then
+  echo "Creating output directory: $OUTPUT_PATH"
+  mkdir -p "$OUTPUT_PATH" || { echo "Failed to create output directory."; exit 1; }
+fi
+
+# Create working dir
+WORK_DIR="${OUTPUT_PATH}/work_dir"
+if [[ ! -d "$WORK_DIR" ]]; then
+  mkdir -p "$WORK_DIR" || { echo "Failed to create working directory."; exit 1; }
 fi
 
 # Run
-if [ $COMPLEX_MODE -eq 1 ]; then
-  echo "Complex mode"
-  docker compose exec fenics bash -c "source /usr/local/bin/dolfinx-complex-mode && python3 $1"
-else
-  echo "Real mode"
-  docker compose exec fenics bash -c "source /usr/local/bin/dolfinx-real-mode && python3 $1"
-fi
+echo
+echo
+echo "Run loudspeaker simulation"
+echo "Running Electromagnetic Converter..."
+echo "Running Coil Current Converter..."
+echo
+
+COIL_PATH="${WORK_DIR}/coil_current.npy"
+MODE="frequency_impedance"
+MODE="frequency_impedance"
+
+python boomspeaver/electromagnetic/calulate_coil_current.py \
+  --input_signal_path $SIGNAL_PATH \
+  --loudspeaker_params $LOUDSPEAKER_CONFIG_PATH \
+  --output_path $COIL_PATH \
+  $MODE \
+  --impedance_params $IMPEDANCE_PATH
+
+echo "Running Magnetic Force Converter..."
+echo
+
+MAGNETIC_FORCE_PATH="${WORK_DIR}/magnetic_force.npy"
+
+python boomspeaver/electromagnetic/magnetic_force.py \
+  --input_signal_path $COIL_PATH \
+  --loudspeaker_params $LOUDSPEAKER_CONFIG_PATH \
+  --output_path $MAGNETIC_FORCE_PATH
+
+
+
+
