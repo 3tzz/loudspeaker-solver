@@ -144,3 +144,4 @@ MODE="dynamic"
   --loudspeaker_params_path $LOUDSPEAKER_CONFIG_PATH \
   --output_path $ACOUSTIC_PATH \
   --shape_profile $MODE \
+  --listen
