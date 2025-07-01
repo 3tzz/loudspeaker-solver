@@ -73,7 +73,7 @@ def time_loop_wave(
 ) -> tuple[io.utils.XDMFFile, np.ndarray]:
     """Time step loop simulation."""
     force = pad_vector(force, time)
-    p_mic = np.zeros_like(time)
+    p_mic = np.empty(len(time), dtype=object)
 
     for idx, (t, fv) in enumerate(zip(time, force)):
         print(idx, t, fv)
@@ -229,12 +229,12 @@ def main(
     )
 
     if mic_coordinates:
-        mic_coordinates = [r_diaphragm-r_coil, 0.0, 0.0]
+        # mic_coordinates = [r_diaphragm-r_coil, 0.0, 0.0]
 
-        # start = np.array([r_coil, 0, 0])
-        # end = np.array([r_diaphragm, 0, 0])
-        # num_points = 100
-        # mic_coordinates = np.linspace(start, end, num_points).T
+        start = np.array([r_coil, 0, 0])
+        end = np.array([r_diaphragm, 0, 0])
+        num_points = 100
+        mic_coordinates = np.linspace(start, end, num_points).T
     else:
         mic_coordinates= None
 
