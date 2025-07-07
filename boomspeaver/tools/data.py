@@ -87,17 +87,33 @@ def save_numpy_file(output_path: Path, data: np.ndarray) -> None:
     except Exception as e:
         raise IOError(f"Failed to save numpy file: {e}") from e
 
+def pad_vector(
+    array_to_pad: np.ndarray,
+    reference_array: np.ndarray,
+    dim: int = 0
+) -> np.ndarray:
+    """
+    Pad a 1D or 2D array along the specified dimension to match the reference array.
+    """
+    if array_to_pad.ndim not in (1, 2) or reference_array.ndim not in (1, 2):
+        raise ValueError("Only 1D and 2D arrays are supported.")
+    if dim >= array_to_pad.ndim:
+        raise ValueError(f"Cannot pad dimension {dim} of an array with shape {array_to_pad.shape}")
 
-def pad_vector(vector_to_pad: np.ndarray, reference_vector: np.ndarray) -> np.ndarray:
-    """Pad vector according to reference vector length."""
-    pad_length = len(reference_vector) - len(vector_to_pad)
+    pad_len = reference_array.shape[dim] - array_to_pad.shape[dim]
+    if pad_len < 0:
+        raise ValueError("Array to pad is longer than reference along the specified dimension.")
+    if pad_len == 0:
+        return array_to_pad
 
-    if pad_length > 0:
-        return np.pad(vector_to_pad, (0, pad_length), mode="constant")
-    elif pad_length == 0:
-        return vector_to_pad
+    if array_to_pad.ndim == 1:
+        pad_width = (0, pad_len) if dim == 0 else (pad_len, 0)
+        return np.pad(array_to_pad, pad_width, mode="constant")
     else:
-        raise ValueError("Provided vector to pad is longer than reference.")
+        pad_config = [(0, 0), (0, 0)]
+        pad_config[dim] = (0, pad_len)
+        return np.pad(array_to_pad, pad_config, mode="constant")
+
 
 
 def load_wave_file(file_path: Path) -> tuple[np.ndarray, int]:

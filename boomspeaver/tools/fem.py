@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any, Callable
 
+from boomspeaver.tools.sampler import CubicSpline
 import gmsh
 import numpy as np
 import ufl
@@ -180,7 +181,6 @@ def initialize_fem_function(V: fem.FunctionSpace, name: str) -> fem.function.Fun
     func.name = name
     return func
 
-
 def wave_equation(
     V: fem.FunctionSpace,
     domain: mesh.Mesh,
@@ -240,7 +240,6 @@ def set_bcs(name: str, domain: mesh.Mesh, V: fem.FunctionSpace):
         raise NotImplementedError(f"Unknown boundaries type {name}.")
 
 
-# Shape
 class Shape:
     def __init__(self, name: str, kwargs: dict = None, verbose: bool = False) -> None:
         self.verbose = verbose
@@ -275,6 +274,31 @@ class Shape:
         if self.verbose:
             print(f"[Shape] Ring inside domain: {np.any(ring)}")
         return np.where(ring, 1.0, 0.0)
+
+    def radial_spline_profile(
+        self,
+        x,
+        values: np.ndarray,
+        center: tuple[float, float] = (0.0, 0.0),
+        r_min: float = 0.0,
+        r_max: float = 1.0,
+    ) -> np.ndarray:
+        """
+        Radial profile evaluated via spline interpolation at runtime.
+        `values` must be passed at each call to allow dynamic updates.
+        """
+        if values is None:
+            raise ValueError("`values` must be provided at each call.")
+
+        x0, y0 = center
+        radius = np.sqrt((x[0] - x0)**2 + (x[1] - y0)**2)
+
+        r_norm = (radius - r_min) / (r_max - r_min)
+        r_norm = np.clip(r_norm, 0, 1)
+
+        x_vals = np.linspace(0, 1, len(values))
+        spline = CubicSpline(x_vals, values)
+        return spline(r_norm)
 
     def square_spatial_profile(
         self,

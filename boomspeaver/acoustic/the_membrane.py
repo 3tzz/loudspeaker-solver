@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import argparse
+from typing import Callable
 import ufl
 from dolfinx import fem, io, mesh
 from dolfinx.fem.petsc import LinearProblem
@@ -106,11 +107,11 @@ def time_loop_wave(
         xdmf.write_function(u, t)
     return xdmf, p_mic
 
-
 def simulate_wave(
     domain: mesh.Mesh,
     time: np.ndarray,
-    force: np.ndarray,
+    force: np.ndarray | None,
+    initial_condition: Shape | None,
     output_path: Path,
     shape_profile: Shape | None,
     c: float,
@@ -125,6 +126,9 @@ def simulate_wave(
     u0 = initialize_fem_function(V, "u0")
     u = initialize_fem_function(V, "u")
     f = initialize_fem_function(V, "f")
+
+    if initial_condition is not None:
+        u1.interpolate(lambda x: initial_condition.shape(x))
 
     bcs = None
 
@@ -173,15 +177,19 @@ def simulate_wave(
 
 def main(
     time_input_path: Path,
-    signal_input_path: Path,
+    signal_input_path: Path | None,
+    initial_condition_path: Path | None,
     loudspeaker_params_path: Path | None,
     output_path: Path,
     mic_coordinates: bool,
     mesh_dim: int = 2,
+    mesh_resolution: int = 100,
     shape_profile: str | None = None,
+
 ) -> None:
     assert isinstance(time_input_path, Path)
-    assert isinstance(signal_input_path, Path)
+    assert isinstance(signal_input_path, Path) or signal_input_path is None
+    assert isinstance(initial_condition_path, Path) or initial_condition_path is None
     assert isinstance(loudspeaker_params_path, Path)
     assert isinstance(output_path, Path)
     output_path.parent.mkdir(exist_ok=True, parents=True)
@@ -189,12 +197,28 @@ def main(
     assert isinstance(shape_profile, str) or shape_profile is None
 
     time = load_numpy_file(time_input_path)
-    force = load_numpy_file(signal_input_path)
-    force = pad_vector(force, time)
+    assert len(time.shape) == 1
+
+    if signal_input_path:
+        force = load_numpy_file(signal_input_path)
+        assert len(force.shape) == 1
+    else:
+        force = None
+
+    if initial_condition_path:
+        initial_condition = load_numpy_file(initial_condition_path)
+        assert len(initial_condition.shape) == 1
+    else:
+        initial_condition = None
+
+    if force is not None:
+        force = pad_vector(force, time)
+    else:
+        force = pad_vector(np.array([0]),time)
+    print(force.shape)
     time = time[:1000]  # TODO: just for prototyping
     force = force[:1000]  # TODO: just for prototyping
-    print(len(time))
-    print(len(force))
+    print(time.shape)
 
     assert len(time) == len(force)
 
@@ -207,30 +231,45 @@ def main(
         if shape_profile == "magnetostatic":
             domain = create_circular_mesh(
                 radius=r_diaphragm,
-                mesh_size=r_diaphragm / 100,
+                mesh_size=r_diaphragm / mesh_resolution,
                 output_dir=output_path.parent,
             )
+            if force is not None:
+                shape_profile = Shape(
+                    name="ring_spatial_profile",
+                    kwargs={"r": r_coil, "width": 1, "center": (0.0, 0.0)},
+                    verbose=False,
+                )
+            if initial_condition is not None:
+                initial_condition = Shape(
+                    name="radial_spline_profile",
+                    kwargs={"r_max": r_diaphragm, "values": initial_condition, "center": (0.0, 0.0)},
+                )
         if shape_profile == "dynamic":
             domain = create_annulus_mesh(
                 outer_radius=r_diaphragm,
                 inner_radius=r_coil,
-                mesh_size=r_diaphragm / 100,
+                mesh_size=r_diaphragm / mesh_resolution,
                 output_dir=output_path.parent,
             )
+            if force is not None:
+                shape_profile = Shape(
+                    name="ring_spatial_profile",
+                    kwargs={"r": r_coil, "width": 0.01, "center": (0.0, 0.0)},
+                    verbose=False,
+                )
+            if initial_condition is not None:
+                initial_condition = Shape(
+                    name="radial_spline_profile",
+                    kwargs={"r_max": r_diaphragm, "values": initial_condition, "center": (0.0, 0.0)},
+                )
     elif mesh_dim == 3:
         raise NotImplementedError
     else:
         raise ValueError
 
-    shape_profile = Shape(
-        name="ring_spatial_profile",
-        kwargs={"r": r_coil, "width": 0.01, "center": (0.0, 0.0)},
-        verbose=False,
-    )
 
     if mic_coordinates:
-        # mic_coordinates = [r_diaphragm-r_coil, 0.0, 0.0]
-
         start = np.array([r_coil, 0, 0])
         end = np.array([r_diaphragm, 0, 0])
         num_points = 100
@@ -243,6 +282,7 @@ def main(
         domain=domain,
         time=time,
         force=force,
+        initial_condition=initial_condition,
         shape_profile=shape_profile,
         output_path=output_path,
         mic_coordinates=mic_coordinates,
@@ -263,8 +303,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--signal_input_path",
         type=str,
-        default="examples/cosine_wave.npy",
-        help="Path to the NumPy file containing the input signal.",
+        help="Path to the NumPy file containing the input signal. Assigned in the centre of geometry.",
+    )
+    parser.add_argument(
+        "--initial_condition_path",
+        type=str,
+        help="Path to the NumPy file containing the initial condition. Points from array are scaled and interpolated to geometry.",
     )
     parser.add_argument(
         "--loudspeaker_params_path",
@@ -300,9 +344,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    if args.signal_input_path is None and args.initial_condition_path is None:
+        parser.error("You must provide at least one of --signal_input_path or --initial_condition_path.")
+
+    signal_input_path=Path(args.signal_input_path) if args.signal_input_path else None
+    initial_condition_path=Path(args.initial_condition_path) if args.initial_condition_path else None
+
     main(
         time_input_path=Path(args.time_input_path),
-        signal_input_path=Path(args.signal_input_path),
+        signal_input_path=signal_input_path,
+        initial_condition_path=initial_condition_path,
         loudspeaker_params_path=Path(args.loudspeaker_params_path),
         output_path=Path(args.output_path),
         mic_coordinates=args.listen,
