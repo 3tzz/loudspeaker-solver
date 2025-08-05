@@ -1,0 +1,20 @@
+name: external
+
+type: time
+time_history: 5
+time_future: 10
+
+train_val:
+  external: False
+  split: True
+  ratio: 0.01
+  seed: 42
+
+global_ids:
+  save: True
+  output:
+    path: "output_surrogate/unet_time_first"
+    repo_relative: True
+    exists_ok: False
+
+normalization: perpair

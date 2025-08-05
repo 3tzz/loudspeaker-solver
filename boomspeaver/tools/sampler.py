@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 def create_random_vector(
     length: int,
     seed: int = None,
+    rng: np.random.Generator = None,
     value_range: tuple[float, float] | None = None
 ) -> np.ndarray:
     """
@@ -14,7 +15,10 @@ def create_random_vector(
     """
     if seed is not None:
         np.random.seed(seed)
-    y = np.random.randn(length)
+    if rng is None:
+        y = np.random.randn(length)
+    else:
+        y = rng.standard_normal(length)
 
     if value_range:
         y = scale_to_range(y, value_range)

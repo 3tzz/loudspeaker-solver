@@ -12,6 +12,6 @@ services:
     working_dir: ${WORKING_DIR}
     stdin_open: true # Keeps stdin open for interactive sessions
     tty: true # Allocates a pseudo-TTY
-    command: tail -f /dev/null # Keep the container running
+    command: tail -f /dev/null
     env_file:
       - .env

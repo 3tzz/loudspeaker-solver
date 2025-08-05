@@ -1,7 +1,8 @@
 import json
 import os
+import shutil
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import numpy as np
 import pandas as pd
@@ -87,10 +88,33 @@ def save_numpy_file(output_path: Path, data: np.ndarray) -> None:
     except Exception as e:
         raise IOError(f"Failed to save numpy file: {e}") from e
 
+
+def save_txt_file(data: list[str], file_path: Path) -> None:
+    """
+    Save a list of strings to a .txt file, one item per line.
+    """
+    assert isinstance(file_path, Path)
+    assert isinstance(data, list)
+    assert len(data) != 0
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with file_path.open("w", encoding="utf-8") as f:
+        for item in data:
+            f.write(f"{item}\n")
+
+
+def load_txt_file(file_path: Path) -> list[str]:
+    """
+    Load a list of strings from a .txt file, assuming one item per line.
+    """
+    assert file_path.exists()
+
+    with file_path.open("r", encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip()]
+
+
 def pad_vector(
-    array_to_pad: np.ndarray,
-    reference_array: np.ndarray,
-    dim: int = 0
+    array_to_pad: np.ndarray, reference_array: np.ndarray, dim: int = 0
 ) -> np.ndarray:
     """
     Pad a 1D or 2D array along the specified dimension to match the reference array.
@@ -98,11 +122,15 @@ def pad_vector(
     if array_to_pad.ndim not in (1, 2) or reference_array.ndim not in (1, 2):
         raise ValueError("Only 1D and 2D arrays are supported.")
     if dim >= array_to_pad.ndim:
-        raise ValueError(f"Cannot pad dimension {dim} of an array with shape {array_to_pad.shape}")
+        raise ValueError(
+            f"Cannot pad dimension {dim} of an array with shape {array_to_pad.shape}"
+        )
 
     pad_len = reference_array.shape[dim] - array_to_pad.shape[dim]
     if pad_len < 0:
-        raise ValueError("Array to pad is longer than reference along the specified dimension.")
+        raise ValueError(
+            "Array to pad is longer than reference along the specified dimension."
+        )
     if pad_len == 0:
         return array_to_pad
 
@@ -113,7 +141,6 @@ def pad_vector(
         pad_config = [(0, 0), (0, 0)]
         pad_config[dim] = (0, pad_len)
         return np.pad(array_to_pad, pad_config, mode="constant")
-
 
 
 def load_wave_file(file_path: Path) -> tuple[np.ndarray, int]:
@@ -136,6 +163,33 @@ def save_wave_file(file_path: Path, fs: int, data: np.ndarray) -> None:
     )
     file_path.parent.mkdir(parents=True, exist_ok=True)
     sf.write(file=str(file_path), data=data, samplerate=fs)
+
+
+def search4paths(
+    input_path: Path, search_pattern: str, recursive: bool
+) -> Iterable[Path]:
+    """Search for file or directory paths matching a pattern."""
+    assert isinstance(input_path, Path) and input_path.exists()
+    assert isinstance(search_pattern, str)
+    assert isinstance(recursive, bool)
+    if recursive:
+        output_paths = input_path.rglob(search_pattern)
+    else:
+        output_paths = input_path.glob(search_pattern)
+    return output_paths
+
+
+def remove_paths(paths: Iterable[Path] | list[Path], remove_dirs: bool = False) -> None:
+    """Remove files, symlinks, and optionally directories from a given iterator of paths."""
+    for path in paths:
+        try:
+            if path.is_file() or path.is_symlink():
+                path.unlink()
+            elif remove_dirs and path.is_dir():
+                shutil.rmtree(path)
+            print(f"Removed: {path}")
+        except Exception as e:
+            print(f"Failed to remove {path}: {e}")
 
 
 def get_value_from_dict(data: dict, *keys, default=None) -> Any:

@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any, Callable, Generator
 
 import librosa
 import matplotlib.pyplot as plt
@@ -67,6 +67,28 @@ def istft(
     signal = signal.astype(np.float32)
     return signal
 
+def stft_generator(
+    signal: np.ndarray,
+    sampling_rate: int,
+    n_fft: int = 2048,
+    win_length: int = 2048,
+    hop_length: int = 512,
+) -> Generator[np.ndarray, None, None]:
+    """
+    Yields individual STFT frames (as 1D complex arrays) from the given signal.
+    """
+    signal = signal.astype(np.float32)
+
+    freqs, stft_matrix = stft(
+        signal=signal,
+        sampling_rate=sampling_rate,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        win_length=win_length,
+    )
+
+    for i in range(stft_matrix.shape[1]):
+        yield freqs[i], stft_matrix[:, i]
 
 def plot_spectrogram(
     spec: np.ndarray, sampling_rate: int, hop_length: int = 512, y_axis: str = "log"

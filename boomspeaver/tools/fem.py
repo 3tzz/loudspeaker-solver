@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any, Callable
 
-from boomspeaver.tools.sampler import CubicSpline
+from boomspeaver.tools.sampler import spline_interpolate
 import gmsh
 import numpy as np
 import ufl
@@ -296,8 +296,7 @@ class Shape:
         r_norm = (radius - r_min) / (r_max - r_min)
         r_norm = np.clip(r_norm, 0, 1)
 
-        x_vals = np.linspace(0, 1, len(values))
-        spline = CubicSpline(x_vals, values)
+        spline = spline_interpolate(values=values)
         return spline(r_norm)
 
     def square_spatial_profile(

@@ -48,6 +48,7 @@ def time_loop_wave(
     xdmf: io.utils.XDMFFile,
     microphone: MicrophonePressure | None,
 ) -> tuple[io.utils.XDMFFile, np.ndarray]:
+    """Time step loop simulation."""
     force = pad_vector(force, time)
     p_mic = np.zeros_like(time)
     for idx, (t, fv) in enumerate(zip(time, force)):
@@ -55,6 +56,7 @@ def time_loop_wave(
         if force_shape is None:
             force_function.interpolate(lambda x: np.full(x.shape[1], fv))
         else:
+            assert isinstance(force_shape, Shape)
             force_function.interpolate(lambda x: fv * force_shape.shape(x))
         if bc is not None:
             A = fem.petsc.assemble_matrix(bilinear_form, bcs=bc)

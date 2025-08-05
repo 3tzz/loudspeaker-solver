@@ -1,0 +1,10 @@
+optimizer: adam
+device: cuda
+lr: 0.001
+batch_size: 131072
+epochs: 10000
+loss: mse
+shuffle: true
+output:
+  path: output_surrogate/first_train
+  repo_relative: True

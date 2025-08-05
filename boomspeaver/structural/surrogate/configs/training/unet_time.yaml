@@ -1,0 +1,10 @@
+optimizer: adam
+device: cpu
+lr: 1e-5
+batch_size: 128
+epochs: 10000
+loss: mse
+shuffle: true
+output:
+  path: output_surrogate/unet_time_first
+  repo_relative: True

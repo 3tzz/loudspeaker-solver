@@ -1,0 +1,10 @@
+defaults:
+  - _self_
+  - data: all
+  - dataset: start_here
+  - model: nn_test
+  - training: init
+
+hydra:
+  run:
+    dir: ./logs/${now:%Y-%m-%d}/${now:%H-%M-%S}

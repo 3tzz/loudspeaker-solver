@@ -1,0 +1,18 @@
+name: external
+
+type: statebystate
+
+train_val:
+  external: True
+  split: True
+  input_train:
+    path: output_surrogate/train_split/global_ids_val_filt.txt
+    repo_relative: True
+  input_val:
+    path: output_surrogate/train_split/global_ids_val_filt.txt
+    repo_relative: True
+
+global_ids:
+  save: False
+
+normalization: perpair

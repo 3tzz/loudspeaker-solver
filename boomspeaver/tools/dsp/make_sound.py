@@ -41,11 +41,13 @@ def generate_cosine_wave(
     fs: int,
     amplitude: float,
     signal_norm: bool = False,
+    add_silence: bool = False,
 ) -> np.ndarray:
     """Generates a sine wave signal."""
     t = generate_time_domain(sampling_rate=fs, duration=duration)
     cosine_wave = amplitude * np.sin(2 * np.pi * frequency * t)
-    cosine_wave = add_silence(cosine_wave)
+    if add_silence:
+        cosine_wave = add_silence(cosine_wave)
     if signal_norm:
         cosine_wave = normalize(cosine_wave)
     return cosine_wave
@@ -98,17 +100,22 @@ def generate_chord(
     frequencies: list[float],
     duration: float,
     fs: int,
-    amplitude: float,
+    amplitudes: list[float] | None = None,
     signal_norm: bool = False,
+    silence: bool = True,
 ) -> np.ndarray:
     """Generates a chord by combining multiple sine waves."""
+    if not amplitudes:
+        amplitudes = [1] * len(frequencies)
+    assert len(amplitudes)==len(frequencies)
 
     t = generate_time_domain(sampling_rate=fs, duration=duration)
     signal = np.zeros_like(t)
-    for f in frequencies:
-        signal += generate_cosine_wave(f, duration, fs, amplitude)
+    for f, a in zip(frequencies, amplitudes):
+        signal += generate_cosine_wave(f, duration, fs, a)
 
-    signal = add_silence(signal)
+    if silence:
+        signal = add_silence(signal)
     if signal_norm:
         signal = normalize(signal)
     return signal

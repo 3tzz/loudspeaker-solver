@@ -16,5 +16,12 @@ setup(
         "dotenv",
         "librosa",
         "pandas",
+        "jupyter",
+        "notebook",
+        "torch",
+        "torchvision",
+        "torchaudio",
+        "hydra-core",
+        "rich",
     ],
 )

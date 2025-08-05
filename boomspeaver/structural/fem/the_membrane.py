@@ -29,7 +29,7 @@ from boomspeaver.tools.fem import (
     set_bcs,
     wave_equation,
 )
-from boomspeaver.tools.dsp.dsp import get_resolution
+from boomspeaver.tools.signal.signal import get_resolution
 
 
 def validate(
@@ -227,8 +227,7 @@ def main(
         loudspeaker_params_path
     )
     c = np.sqrt(youngs_modulus / rho)  # estimate sound speed inside membrane material
-    # mesh_resolution = r_diaphragm / 128
-    mesh_resolution = r_diaphragm / 256
+    mesh_resolution = r_diaphragm / 128
     if mesh_dim == 2:
         if shape_profile == "magnetostatic":
             domain = create_circular_mesh(
