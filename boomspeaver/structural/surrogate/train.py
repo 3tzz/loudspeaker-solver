@@ -1,5 +1,6 @@
 import hydra
 import torch
+from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 
@@ -40,6 +41,11 @@ def train(cfg: DictConfig) -> None:
         loss_fn = torch.nn.L1Loss()
     else:
         raise ValueError(f"Unsupported loss function: {cfg.training.loss}")
+
+    if cfg.training.scheduler is False:
+        scheduler = None
+    else:
+        scheduler = instantiate(cfg.scheduler, optimizer=optimizer)
 
     trainer = Model(
         model=model, optimizer=optimizer, loss_fn=loss_fn, device=cfg.training.device

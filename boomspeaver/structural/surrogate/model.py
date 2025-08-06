@@ -127,7 +127,7 @@ class Model:
                     print("✓ New best model saved.")
 
             if self.scheduler:
-                self.scheduler.step()
+                self.scheduler.step(avg_train_loss)
 
     def evaluate(self, data_loader):
         self.model.eval()

@@ -5,6 +5,7 @@ batch_size: 16
 epochs: 10
 loss: mse
 shuffle: true
+scheduler: False
 output:
   path: output_surrogate/test_case
   repo_relative: True

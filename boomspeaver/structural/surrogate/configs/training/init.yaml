@@ -5,6 +5,12 @@ batch_size: 131072
 epochs: 10000
 loss: mse
 shuffle: true
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  mode: min
+  factor: 0.5
+  patience: 10
+  verbose: True
 output:
   path: output_surrogate/first_train
   repo_relative: True

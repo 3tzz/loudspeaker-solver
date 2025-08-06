@@ -5,6 +5,7 @@ batch_size: 128
 epochs: 10000
 loss: mse
 shuffle: true
+scheduler: False
 output:
   path: output_surrogate/second_unet
   repo_relative: True
