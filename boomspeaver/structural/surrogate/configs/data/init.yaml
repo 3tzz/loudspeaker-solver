@@ -1,4 +1,4 @@
-name: all
+name: init
 
 input_path: output_surrogate
 repo_relative: True

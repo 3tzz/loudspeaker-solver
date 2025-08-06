@@ -74,7 +74,7 @@ class Model:
             train_losses = []
             total_samples = 0
             for batch in train_loader:
-                inputs, targets, _ = batch
+                inputs, targets, time_gap = batch
                 if inputs.ndim == 2:
                     inputs = inputs.unsqueeze(1).unsqueeze(1)
                 elif inputs.ndim == 3:
@@ -97,11 +97,16 @@ class Model:
                 val_losses = []
                 total_samples = 0
                 for batch in val_loader:
-                    inputs, targets, _ = batch
-                    inputs = inputs.unsqueeze(1)
-                    targets = targets.unsqueeze(1)
-                    inputs = inputs.unsqueeze(1)
-                    targets = targets.unsqueeze(1)
+                    inputs, targets, time_gap = batch
+                    if inputs.ndim == 2:
+                        inputs = inputs.unsqueeze(1).unsqueeze(1)
+                    elif inputs.ndim == 3:
+                        inputs = inputs.unsqueeze(2)
+
+                    if targets.ndim == 2:
+                        targets = targets.unsqueeze(1).unsqueeze(1)
+                    elif targets.ndim == 3:
+                        targets = targets.unsqueeze(2)
                     batch_size = inputs.size(0)
                     loss = self.eval_step(inputs, targets)
                     val_losses.append(loss)
@@ -128,7 +133,7 @@ class Model:
         self.model.eval()
         all_losses = []
         for batch in data_loader:
-            inputs, targets, _ = batch
+            inputs, targets, time_gap = batch
             loss = self.eval_step(inputs, targets)
             all_losses.append(loss)
         return sum(all_losses) / len(all_losses)

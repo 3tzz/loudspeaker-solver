@@ -11,8 +11,11 @@ from boomspeaver.structural.surrogate.utils import save_config
 
 @hydra.main(config_path="configs", config_name="config", version_base="1.3")
 def train(cfg: DictConfig) -> None:
+    print("Loading data...")
     dataset_train, dataset_val = get_dataset(cfg)
+    print("Data loaded.")
 
+    print("Dataset loading...")
     train_loader = DataLoader(
         dataset_train, batch_size=cfg.training.batch_size, shuffle=cfg.training.shuffle
     )
@@ -20,8 +23,12 @@ def train(cfg: DictConfig) -> None:
     val_loader = DataLoader(
         dataset_val, batch_size=cfg.training.batch_size, shuffle=False
     )
+    print(f"Dataset loaded: train {len(train_loader)}, validate {len(val_loader)}.")
 
+    print("Building model architecture...")
     model = ModelArchitecture.build_model(cfg.model)
+    print("Model architecture builded.")
+
     if cfg.training.optimizer == "adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=cfg.training.lr)
     else:

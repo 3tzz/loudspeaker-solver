@@ -1,9 +1,7 @@
-name: time
+name: future_gap
 
-type: time
-time_history: 5
-time_future: 10
-time_gap: False
+type: statebystate
+time_gap: True
 
 train_val:
   external: False
@@ -14,7 +12,7 @@ train_val:
 global_ids:
   save: True
   output:
-    path: "output_surrogate/unet_time_first"
+    path: "output_surrogate/unet_attention_first"
     repo_relative: True
     exists_ok: False
 

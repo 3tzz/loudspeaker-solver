@@ -1,6 +1,7 @@
 name: external
 
 type: statebystate
+time_gap: False
 
 train_val:
   external: True
