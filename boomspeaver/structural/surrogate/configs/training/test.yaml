@@ -6,6 +6,7 @@ epochs: 10
 loss: mse
 shuffle: true
 scheduler: False
+resume: false
 output:
   path: output_surrogate/test_case
   repo_relative: True

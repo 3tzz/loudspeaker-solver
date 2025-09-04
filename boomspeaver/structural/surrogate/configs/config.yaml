@@ -1,9 +1,10 @@
 defaults:
   - _self_
-  - data: all
-  - dataset: start_here
+  - data: init
+  - dataset: init
   - model: nn_test
   - training: init
+  - al: rs
 
 hydra:
   run:

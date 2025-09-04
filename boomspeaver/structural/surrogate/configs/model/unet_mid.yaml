@@ -1,0 +1,9 @@
+model_type: unet_mid
+n_channels: 128
+cond_channels: 32
+padding_mode: zeros
+has_attn: true
+activation: relu
+norm: true
+use_scale_shift_norm: false
+n_dims: 1

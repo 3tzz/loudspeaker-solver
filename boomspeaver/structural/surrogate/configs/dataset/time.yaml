@@ -1,15 +1,19 @@
 name: time
 
 type: time
-time_history: 5
+time_history: 1
 time_future: 10
-time_gap: False
+time_gap: false
 
 train_val:
-  external: False
-  split: True
-  ratio: 0.01
-  seed: 42
+  split: true
+  external: true
+  input_val:
+    path: output_surrogate/train_split/random_starts.txt
+    repo_relative: true
+  input_train:
+    path: output_surrogate/train_split/global_ids_train_new_10step.txt
+    repo_relative: true
 
 global_ids:
   save: True

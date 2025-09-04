@@ -8,7 +8,7 @@ from scipy.integrate import solve_ivp
 
 from boomspeaver.loudspeaker.schema import Loudspeaker
 from boomspeaver.tools.data import load_numpy_file, save_numpy_file
-from boomspeaver.tools.signal.make_sound import generate_time_domain
+from boomspeaver.tools.dsp.make_sound import generate_time_domain
 
 
 def radau_mass_spring_damper(
@@ -29,8 +29,8 @@ def radau_mass_spring_damper(
     - v(t): Velocity array
     """
 
-    # Interpolate force for continuous evaluation
     force_interp = interp1d(t, force, kind="linear", bounds_error=False, fill_value=0.0)
+
 
     def ode_system(ti, y):
         x, v = y

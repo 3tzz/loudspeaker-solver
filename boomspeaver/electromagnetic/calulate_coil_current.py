@@ -6,7 +6,7 @@ import numpy as np
 from boomspeaver.loudspeaker.electrical_impedance import ImpedanceData
 from boomspeaver.loudspeaker.schema import Loudspeaker
 from boomspeaver.tools.data import load_wave_file, save_numpy_file
-from boomspeaver.tools.signal.signal import istft, plot_spectrogram, stft
+from boomspeaver.tools.dsp.dsp import istft, plot_spectrogram, stft
 
 
 def voltage_to_current_resistive(voltage_signal: np.ndarray, Re: float) -> np.ndarray:
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     frequency_impedance_parser.add_argument(
         "--impedance_params",
         type=str,
-        default="example/electrical_impedance.csv",
+        default="examples/electrical_impedance.csv",
         help="File representing total electrical impedance according to frequencies.",
     )
     frequency_impedance_parser.add_argument(

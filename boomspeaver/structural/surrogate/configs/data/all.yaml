@@ -4,14 +4,14 @@ input_path: output_surrogate
 repo_relative: True
 
 search_patterns: ["*_simulated.npy"]
-recursive_search: True
+recursive_search: true
 
 filter:
   external: True
   input:
     type: global_ids
     path: output_surrogate/train_split/test.txt
-    repo_relative: True
+    repo_relative: true
 
 global_id_formatter:
   type: str

@@ -1,16 +1,16 @@
 optimizer: adam
 device: cuda
 lr: 1e-3
-batch_size: 128
+batch_size: 512
 epochs: 10000
 loss: mse
 shuffle: true
 scheduler:
   _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
   mode: min
-  factor: 0.9
-  patience: 50
-resume: false
+  factor: 0.1
+  patience: 5
+resume: true
 output:
-  path: output_surrogate/third_unet
+  path: output_surrogate/four_unet_gap_
   repo_relative: true

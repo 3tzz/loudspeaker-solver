@@ -1,0 +1,21 @@
+{
+  "driver": {
+    "width": 168,
+    "height": 70,
+    "height_wo_diameter_cylinder": 35,
+    "unit": "mm"
+  },
+  "magnet_with_ferro": {
+    "width": 115,
+    "height": 35,
+    "unit": "mm"
+  },
+  "ferromagnetic": {
+    "width": 8,
+    "unit": "mm"
+  },
+  "voice_coil": {
+    "width": 1,
+    "unit": "mm"
+  }
+}

@@ -1,17 +1,22 @@
 from pathlib import Path
 from typing import Any, Callable
 
-from boomspeaver.tools.sampler import spline_interpolate
 import gmsh
+import matplotlib.pyplot as plt
 import numpy as np
 import ufl
 from dolfinx import fem, io, mesh
 from mpi4py import MPI
 from petsc4py import PETSc
+from scipy.interpolate import griddata
+
+from boomspeaver.tools.sampler import spline_interpolate
 
 
 # Mesh
-def load_mesh(mesh_input_path: Path | None, dim: int = 2) -> mesh.Mesh:
+def load_mesh(
+    mesh_input_path: Path | None, dim: int = 2, return_all: bool = False
+) -> mesh.Mesh:
     """Load mesh file from file."""
     assert isinstance(mesh_input_path, Path) or mesh_input_path is None
     assert isinstance(dim, int)
@@ -25,7 +30,10 @@ def load_mesh(mesh_input_path: Path | None, dim: int = 2) -> mesh.Mesh:
         domain, coll, facet_tags, *_ = io.gmshio.read_from_msh(
             str(mesh_input_path), MPI.COMM_WORLD, 0, gdim=dim
         )
-    return domain
+    if return_all:
+        return domain, coll, facet_tags
+    else:
+        return domain
 
 
 def get_default_rectangle(x: int = 10, y: int = 10, mesh_size: int = 500) -> mesh.Mesh:
@@ -66,15 +74,13 @@ def create_circular_mesh(
     domain = load_mesh(Path(output_path))
     return domain
 
+
 def create_annulus_mesh(
-    outer_radius: float,
-    inner_radius: float,
-    mesh_size: float,
-    output_dir: Path
+    outer_radius: float, inner_radius: float, mesh_size: float, output_path: Path
 ):
     """Create a 2D ring mesh (outer circle with cut-out inner circle)."""
-    assert isinstance(output_dir, Path)
-    output_path = str(output_dir / "annulus.msh")
+    assert isinstance(output_path, Path)
+    output_path = str(output_path.with_suffix(".msh"))
 
     if not gmsh.isInitialized():
         gmsh.initialize()
@@ -103,7 +109,6 @@ def create_annulus_mesh(
     gmsh.write(output_path)
     if gmsh.isInitialized():
         gmsh.finalize()
-
 
     domain = load_mesh(Path(output_path))
     return domain
@@ -174,12 +179,158 @@ def close_xdmf(xdmf: io.utils.XDMFFile) -> None:
     xdmf.close()
 
 
+def load_xdmf(xdmf_path: Path) -> io.utils.XDMFFile:
+    """Load xdmf state from file."""
+    assert isinstance(xdmf_path, Path)
+    assert xdmf.exists()
+    raise NotImplementedError
+
+
 # FEM
 def initialize_fem_function(V: fem.FunctionSpace, name: str) -> fem.function.Function:
     """Initialize FEM Function."""
     func = fem.Function(V)
     func.name = name
     return func
+
+
+def get_surface_cords(
+    domain: mesh.Mesh, V: fem.FunctionSpace, facet_tags: mesh.meshtags, tag: int
+) -> np.ndarray:
+    """
+    Calculate the geometric coordinations of a tagged surface in a mesh (from domain, facet_tags and V).
+    """
+    tdim = domain.topology.dim
+    assert tdim == 3
+    facet_dim = tdim - 1
+
+    # Find all facets with this tag
+    surface_facets = np.where(facet_tags.values == tag)[0]
+    if len(surface_facets) == 0:
+        raise ValueError(f"No facets found with tag {tag}")
+
+    surface_dofs = fem.locate_dofs_topological(
+        V, facet_dim, facet_tags.indices[surface_facets]
+    )
+
+    coords = V.tabulate_dof_coordinates()[surface_dofs]
+    return coords
+
+
+def get_surface_edge_coords(
+    domain: mesh.Mesh, facet_tags: mesh.meshtags, tag: int
+) -> np.ndarray:
+    """
+    Extract coordinates of vertices along the edges of a tagged surface.
+    """
+    tdim = domain.topology.dim
+
+    assert tdim == 3
+    fdim = tdim - 1
+
+    surface_facets = np.where(facet_tags.values == tag)[0]
+    if len(surface_facets) == 0:
+        raise ValueError(f"No facets found with tag {tag}")
+
+    facet_indices = facet_tags.indices[surface_facets]
+
+    domain.topology.create_connectivity(fdim, 0)
+    facet_vertices = []
+    for f in facet_indices:
+        facet_vertices.extend(domain.topology.connectivity(fdim, 0).links(f))
+
+    unique_vertices = np.unique(facet_vertices)
+
+    return domain.geometry.x[unique_vertices]
+
+
+def compute_polar_coordinates(V: fem.FunctionSpace, return_degrees: bool = True):
+    """
+    Compute polar coordinates (r, phi) of the DOFs in a function space,
+    centered at the mean of all DOFs.
+    """
+    coords = V.tabulate_dof_coordinates()
+    center = np.mean(coords, axis=0)
+
+    x = coords[:, 0] - center[0]
+    y = coords[:, 1] - center[1]
+
+    r = np.sqrt(x**2 + y**2)
+    r_max = np.max(r)
+    print(r_max)
+    r = 100 * r / r_max
+    phi = np.arctan2(y, x)
+
+    if return_degrees:
+        phi = np.degrees(phi)
+
+    return r, phi, center, np.max(r)
+
+
+def precalculate_surface_dofs(
+    V: fem.FunctionSpace, domain: mesh.Mesh, facet_tags: mesh.MeshTags, surface_tag: int
+):
+    assert isinstance(surface_tag, int)
+    surface_coords = get_surface_cords(
+        domain=domain, facet_tags=facet_tags, V=V, tag=surface_tag
+    )
+    center = np.mean(surface_coords, axis=0)
+
+    facets = facet_tags.find(surface_tag)
+    dofs_on_surface = fem.locate_dofs_topological(V, domain.topology.dim - 1, facets)
+
+    x = surface_coords[:, 0] - center[0]
+    y = surface_coords[:, 2] - center[2]
+    r_target = np.sqrt(x**2 + y**2)
+    r_target = 100 * r_target / np.max(r_target)
+    phi_target = np.arctan2(y, x)
+    x_target = r_target * np.cos(phi_target)
+    y_target = r_target * np.sin(phi_target)
+    return dofs_on_surface, x_target, y_target
+
+
+def interpolate_surface_values(
+    membrane_displacement: np.ndarray,
+    x_target: np.ndarray,
+    y_target: np.ndarray,
+    plot_flag: bool = False,
+    output_path: Path | None = None,
+):
+    """
+    Interpolate values from a source surface (in polar coords) to a target surface (Cartesian coords).
+    """
+    values_source = membrane_displacement[:, 0]
+    r_source = membrane_displacement[:, 1]
+    phi_source = membrane_displacement[:, 2]
+
+    x_source = r_source * np.cos(phi_source)
+    y_source = r_source * np.sin(phi_source)
+
+    values_target = griddata(
+        points=np.stack([x_source, y_source], axis=1),
+        values=values_source,
+        xi=np.stack([x_target, y_target], axis=1),
+        method="nearest",
+    )
+    if plot_flag and output_path:
+        fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+
+        sc1 = axs[0].scatter(x_source, y_source, s=0.1, c=values_source, cmap="viridis")
+        axs[0].set_title("Source values")
+        plt.colorbar(sc1, ax=axs[0])
+
+        sc2 = axs[1].scatter(x_target, y_target, s=0.1, c=values_target, cmap="viridis")
+        axs[1].set_title("Interpolated values on target")
+        plt.colorbar(sc2, ax=axs[1])
+
+        plt.tight_layout()
+        plt.axis("equal")
+
+        plt.savefig(str(Path(output_path.parent, "interpolation_debug.png")), dpi=150)
+        plt.close()
+
+    return values_target
+
 
 def wave_equation(
     V: fem.FunctionSpace,
@@ -190,6 +341,8 @@ def wave_equation(
     c: int = 343,
     force: fem.function.Function | None = None,
     damping_coefficient: float | None = None,
+    surface_force_id: int | None = None,
+    facet_tags: mesh.MeshTags | None = None,
 ) -> tuple[ufl.form.Form, ufl.form.Form]:
     """Define time dependent wave equation."""
     u, v = ufl.TrialFunction(V), ufl.TestFunction(V)
@@ -201,7 +354,11 @@ def wave_equation(
     )
     l = 2 * u1 * v * ufl.dx - u0 * v * ufl.dx
     if force is not None:
-        l += force * v * ufl.dx
+        if surface_force_id and isinstance(surface_force_id, int):
+            ds = ufl.Measure("ds", domain=domain, subdomain_data=facet_tags)
+            l += force * v * ds(surface_force_id)
+        else:
+            l += force * v * ufl.dx
     if damping_coefficient is not None:
         gamma = fem.Constant(domain, PETSc.ScalarType(damping_coefficient))
         a += gamma * ufl.inner(u, v) * ufl.ds
@@ -216,15 +373,29 @@ def convert_to_form(input_forms: list[ufl.form.Form]) -> list[fem.forms.Form]:
 
 
 # Boundary Conditions
-def set_bcs(name: str, domain: mesh.Mesh, V: fem.FunctionSpace):
+def set_bcs(
+    name: str,
+    domain: mesh.Mesh,
+    V: fem.FunctionSpace,
+    facet_tags: mesh.MeshTags | None = None,
+    surface_tags: list[int] | None = None,
+):
     """Set boundary conditions on all surfaces."""
     if name is None:
         return None
     assert name in {"neumann", "dirichlet", "robin"}
+
     fdim = domain.topology.dim - 1
-    boundary_facets = mesh.locate_entities_boundary(
-        domain, fdim, lambda x: np.full(x.shape[1], True, dtype=bool)
-    )
+    if not surface_tags or not facet_tags:
+        boundary_facets = mesh.locate_entities_boundary(
+            domain, fdim, lambda x: np.full(x.shape[1], True, dtype=bool)
+        )
+    else:
+        boundary_facets = []
+        for tag in surface_tags:
+            facets = facet_tags.find(tag)
+            boundary_facets.append(facets)
+        boundary_facets = np.hstack(boundary_facets)
 
     if name == "neumann":
         return None
@@ -275,6 +446,31 @@ class Shape:
             print(f"[Shape] Ring inside domain: {np.any(ring)}")
         return np.where(ring, 1.0, 0.0)
 
+    def ring_region(
+        self,
+        x,
+        r: float = 0.001,
+        width: float = 0.001,
+        center: tuple[float, float] = (0.0, 0.0),
+    ) -> np.ndarray:
+        x0, y0 = center
+        radius = np.sqrt((x[0] - x0) ** 2 + (x[1] - y0) ** 2)
+        return np.logical_and(radius > r - width / 2, radius < r + width / 2)
+
+    def circle_region(
+        self,
+        x,
+        r: float = 0.001,
+        center: tuple[float, float] = (0.0, 0.0),
+    ) -> np.ndarray:
+        """
+        Returns 1.0 for points inside a filled circle of radius r, 0.0 outside.
+        """
+        x0, y0 = center
+        radius = np.sqrt((x[0] - x0) ** 2 + (x[1] - y0) ** 2)
+        inside = radius <= r
+        return np.where(inside, 1.0, 0.0)
+
     def radial_spline_profile(
         self,
         x,
@@ -291,7 +487,7 @@ class Shape:
             raise ValueError("`values` must be provided at each call.")
 
         x0, y0 = center
-        radius = np.sqrt((x[0] - x0)**2 + (x[1] - y0)**2)
+        radius = np.sqrt((x[0] - x0) ** 2 + (x[1] - y0) ** 2)
 
         r_norm = (radius - r_min) / (r_max - r_min)
         r_norm = np.clip(r_norm, 0, 1)

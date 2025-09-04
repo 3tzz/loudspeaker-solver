@@ -1,19 +1,22 @@
 name: future_gap
 
 type: statebystate
-time_gap: True
+time_gap: true
 
 train_val:
-  external: False
-  split: True
-  ratio: 0.01
-  seed: 42
-
+  split: true
+  external: true
+  input_val:
+    path: output_surrogate/train_split/global_ids_val_gap.txt
+    repo_relative: true
+  input_train:
+    path: output_surrogate/train_split/global_ids_val_gap.txt
+    repo_relative: true
 global_ids:
-  save: True
+  save: true
   output:
-    path: "output_surrogate/unet_attention_first"
-    repo_relative: True
-    exists_ok: False
+    path: "output_surrogate/four_unet_gap"
+    repo_relative: true
+    exists_ok: false
 
 normalization: perpair

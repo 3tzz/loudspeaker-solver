@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 from boomspeaver.tools.data import save_wave_file
-from boomspeaver.tools.signal.signal import normalize
+from boomspeaver.tools.dsp.dsp import normalize
 
 
 def add_silence(
@@ -107,7 +107,7 @@ def generate_chord(
     """Generates a chord by combining multiple sine waves."""
     if not amplitudes:
         amplitudes = [1] * len(frequencies)
-    assert len(amplitudes)==len(frequencies)
+    assert len(amplitudes) == len(frequencies)
 
     t = generate_time_domain(sampling_rate=fs, duration=duration)
     signal = np.zeros_like(t)
@@ -119,6 +119,23 @@ def generate_chord(
     if signal_norm:
         signal = normalize(signal)
     return signal
+
+
+def generate_white_noise(
+    duration: float,
+    fs: int,
+    amplitude: float,
+    signal_norm: bool = False,
+    silence: bool = True,
+) -> np.ndarray:
+    """Generates white noise signal."""
+    n_samples = int(fs * duration)
+    noise_signal = amplitude * np.random.normal(0, 1, n_samples)
+    if silence:
+        noise_signal = add_silence(noise_signal)
+    if signal_norm:
+        noise_signal = normalize(noise_signal)
+    return noise_signal
 
 
 def main():
@@ -260,6 +277,29 @@ def main():
         help="Enable the feature (default: disabled)",
     )
 
+    # Subparser for WHITE NOISE
+    noise_parser = subparsers.add_parser("noise", help="Generate a white noise signal.")
+    noise_parser.add_argument(
+        "--duration", type=float, default=1, help="Duration in seconds (default 1 s)"
+    )
+    noise_parser.add_argument(
+        "--fs", type=int, default=48000, help="Sampling frequency (default 48000 Hz)"
+    )
+    noise_parser.add_argument(
+        "--amplitude", type=float, default=0.5, help="Amplitude (0-1, default 0.5)"
+    )
+    noise_parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("examples/white_noise.wav"),
+        help="Output file path (default examples/white_noise.wav)",
+    )
+    noise_parser.add_argument(
+        "--normalize",
+        action="store_true",
+        help="Enable the feature (default: disabled)",
+    )
+
     args = parser.parse_args()
 
     if args.command == "cosine":
@@ -297,6 +337,13 @@ def main():
     elif args.command == "chord":
         signal_wave = generate_chord(
             args.frequencies, args.duration, args.fs, args.amplitude, args.normalize
+        )
+        save_wave_file(
+            args.output, args.fs, np.int16(signal_wave * 32767)
+        )  # Convert to 16-bit PCM
+    elif args.command == "noise":
+        signal_wave = generate_white_noise(
+            args.duration, args.fs, args.amplitude, args.normalize
         )
         save_wave_file(
             args.output, args.fs, np.int16(signal_wave * 32767)

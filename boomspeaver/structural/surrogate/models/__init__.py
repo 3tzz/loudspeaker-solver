@@ -2,10 +2,11 @@ from omegaconf import OmegaConf
 
 from .nn import NN
 from .unet import Unet1D
+from .unet_mid import UnetMid
 
 __all__ = ["ModelArchitecture", "NN"]
 
-MODEL_REGISTRY = {"nn": NN, "unet": Unet1D}
+MODEL_REGISTRY = {"nn": NN, "unet": Unet1D, "unet_mid": UnetMid}
 
 
 class ModelArchitecture:

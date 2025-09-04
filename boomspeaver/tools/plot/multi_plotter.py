@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import ScalarFormatter
 
 from boomspeaver.tools.plot.configs import Axis, Line, Plotter, Points, Stem, Subplot
 
@@ -68,8 +69,10 @@ class MultiPlotter:
 
             if axis_config.logx:
                 ax.set_xscale("log")
-            if axis_config.logy:
-                ax.set_yscale("log")
+                plt.gca().xaxis.set_major_formatter(ScalarFormatter())
+                plt.gca().ticklabel_format(style="plain", axis="x")
+            if axis_config.ylim is not False:
+                ax.set_ylim(axis_config.ylim)
 
             if self.config.grid:
                 ax.grid(True)

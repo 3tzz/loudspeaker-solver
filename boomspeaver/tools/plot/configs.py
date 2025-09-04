@@ -31,6 +31,8 @@ class Axis:
     title: str
     xlabel: str
     ylabel: str
+    xlim: tuple = False
+    ylim: tuple = False
     logx: bool = False
     logy: bool = False
 

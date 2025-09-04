@@ -1,0 +1,15 @@
+name: random_sampling
+input:
+  train_set:
+    path: output_surrogate/train_split/global_ids_train_gap.txt
+    repo_relative: true
+  val_set:
+    path: output_surrogate/train_split/global_ids_val_gap.txt
+    repo_relative: true
+params:
+  train_size: 500000
+  epoch_step: 100
+  iterations: 10000
+output:
+  path: output_al_mid_time_v3_resume
+  repo_relative: true

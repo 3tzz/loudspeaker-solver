@@ -1,0 +1,15 @@
+name: random_sampling
+input:
+  train_set:
+    path: output_surrogate/train_split/global_ids_train_new.txt
+    repo_relative: true
+  val_set:
+    path: output_surrogate/train_split/random_starts_1k.txt
+    repo_relative: true
+params:
+  train_size: 5000
+  epoch_step: 100
+  iterations: 10000
+output:
+  path: output_al_fullnet_time_10_from_1
+  repo_relative: true

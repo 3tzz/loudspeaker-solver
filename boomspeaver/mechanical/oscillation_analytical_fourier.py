@@ -1,16 +1,4 @@
-# # pylint: disable=missing-module-docstring
-# from pathlib import Path
-# import argparse
-# from numpy import numpy
-
-# from boomspeaver.loudspeaker.schema import Loudspeaker
-# from boomspeaver.tools.data import load_numpy_file, save_numpy_file
-
-# def fourier_analytical() -> np.ndarray:
-
-
-
-
+# pylint: disable=missing-module-docstring
 import numpy as np
 import argparse
 from pathlib import Path
@@ -20,12 +8,13 @@ from functools import cached_property
 from abc import ABC, abstractmethod
 
 
-from boomspeaver.tools.signal.make_sound import generate_chord, generate_time_domain
-from boomspeaver.tools.signal.signal import fft_analysis, stft, stft_generator, detect_peaks
-from boomspeaver.tools.data import load_numpy_file
+from boomspeaver.tools.dsp.make_sound import generate_chord, generate_time_domain
+from boomspeaver.tools.dsp.dsp import fft_analysis, stft, detect_peaks
+from boomspeaver.tools.data import load_numpy_file, save_numpy_file
 from boomspeaver.loudspeaker.schema import Loudspeaker
 from boomspeaver.tools.plot.configs import Axis, Line, Plotter, Points, Subplot
 from boomspeaver.tools.plot.multi_plotter import MultiPlotter
+from boomspeaver.mechanical.oscillation_euler import calculate_mechanical_parameters
 
 def test() -> None:
 
@@ -47,10 +36,6 @@ def test() -> None:
         signal_norm=True,
         silence=False,
     )
-
-
-
-
 
     # Parameters
     m = 1.0          # mass
@@ -286,7 +271,7 @@ class Solver:
         raise NotImplementedError
 
 class HomogeneousOscillationSolver:
-    def __init__(self, system: "HarmonicOscillatorSystem"):
+    def __init__(self, system: "HarmonicOscillatorParams"):
         self.system = system
         dtype = system.damping_type
 
@@ -299,8 +284,8 @@ class HomogeneousOscillationSolver:
         else:
             raise NotImplementedError
 
-    def solve(self, time: np.ndarray, x0: float, v0: float):
-        return self.solver.solve(time, x0, v0)
+    def solve(self, time: np.ndarray, initial_displacement: float, initial_velocity: float) -> tuple[np.ndarray, np.ndarray]:
+        return self.solver.solve(time, initial_displacement, initial_velocity)
 
 class OverdampedSolver(Solver):
     """
@@ -316,7 +301,7 @@ class OverdampedSolver(Solver):
         x(0) = A₁ + A₂ = x₀
         ẋ(0) = −A₁ ⋅ ω₊ − A₂ ⋅ ω₋ = v₀
     """
-    def __init__(self, system: "HarmonicOscillatorSystem"):
+    def __init__(self, system: "HarmonicOscillatorParams"):
         self.system = system
         assert self.system.damping_type.lower() == "overdamped"
 
@@ -341,7 +326,7 @@ class OverdampedSolver(Solver):
         """
         return self.system.total_c_by_2 + self.delta
 
-    def calculate_initial_constants(self,initial_displacement:float, initial_velocity) -> tuple[float, float]:
+    def calculate_initial_constants(self, initial_displacement:float, initial_velocity) -> tuple[float, float]:
         """
         Calculate A₁ and A₂:
             x(0) = A₁ + A₂ = x₀
@@ -390,7 +375,7 @@ class CriticallyDampedSolver(Solver):
             x(0) = A = x₀
             ẋ(0) = B − (Γ/2)⋅A = v₀
     """
-    def __init__(self, system: "HarmonicOscillatorSystem"):
+    def __init__(self, system: "HarmonicOscillatorParams"):
         self.system = system
         assert self.system.damping_type.lower() == "critical"
 
@@ -438,7 +423,7 @@ class UnderdampedSolver(Solver):
             ẋ(0) = −A ⋅ [ω₁ ⋅ sin(−β) + Γ/2 ⋅ cos(−β)]
     """
 
-    def __init__(self, system: "HarmonicOscillatorSystem"):
+    def __init__(self, system: "HarmonicOscillatorParams"):
         self.system = system
         assert self.system.damping_type.lower() == "underdamped"
 
@@ -478,7 +463,7 @@ class UnderdampedSolver(Solver):
         phase = self.system.omega1 * time - β
 
         displacement = A * e1 * np.cos(phase)
-        velocity = -A * e1 * (self.omega1 * np.sin(phase) + self.system.total_c_by_2 * np.cos(phase))
+        velocity = -A * e1 * (self.system.omega1 * np.sin(phase) + self.system.total_c_by_2 * np.cos(phase))
 
         return displacement, velocity
 
@@ -492,7 +477,7 @@ class ParticularFrequency(Solver):
         A, β depend on initial conditions amplitude and phase shift.
     """
 
-    def __init__(self, system: "HarmonicOscillatorSystem"):
+    def __init__(self, system: "HarmonicOscillatorParams"):
         self.system = system
 
     def calculate_amplitude(self, frequency: float, amplitude: float) -> float:
@@ -503,7 +488,7 @@ class ParticularFrequency(Solver):
             A = (F₀ / m) / sqrt((ω₀² − ω²)² + (bω / m)²)
         """
         omega = (self.system.omega0**2 - frequency**2)**2
-        amp = amplitude/self.system.mass
+        amp = amplitude/self.system.m
         damp = ((self.system.total_c * frequency))**2
         return  amp / np.sqrt(omega + damp)
 
@@ -511,7 +496,7 @@ class ParticularFrequency(Solver):
         """
         Calculate phase (δ) for solution:
             x(t) = A ⋅ cos(ω t + δ - δ_res)
-        The phase shift δ  is given by:
+        The phase shift δ is given by:
             δ  = arctan( (b/m) ω / (ω₀² − ω²) )
         """
         numerator = (self.system.total_c)*frequency
@@ -531,27 +516,20 @@ class ParticularFrequency(Solver):
         angle = self.calculate_phase(frequency)
 
         span = frequency*time + angle - phase
+        # span = frequency*time - phase
+        # span = frequency*time
 
         displacement = amplitude * np.cos(span)
-        velocity = -amplitude * self.omega * np.sin(span)
+        velocity = -amplitude * frequency * np.sin(span)
 
         return displacement, velocity
 
-
-class HarmonicOscillationSystem:
-    """
-    Solve the equation of motion for a linear damped harmonic oscillator with multiple harmonic external forces:
-    m·ẍ(t) + c·ẋ(t) + k·x(t) = Σⱼ Fⱼ·cos(ωⱼ·t + φⱼ)
-    https://phys.libretexts.org/Bookshelves/Classical_Mechanics/Variational_Principles_in_Classical_Mechanics_(Cline)/03%3A_Linear_Oscillators/3.06%3A_Sinusoidally-driven_linearly-damped_linear_oscillator
-    """
+class HarmonicOscillationParams:
     def __init__(self, mass: float, damping_coefficient: float, stiffness: float)->None:
-        assert mass == 0
+        assert mass != 0.0
         self.m = mass
         self.c = damping_coefficient
         self.k = stiffness
-        # self.omega0 = np.sqrt(self.k / self.m)  # natural frequency
-        # self.zeta = self.c / (2 * np.sqrt(self.k * self.m)) # damping ratio
-        # self.omega_d = self.omega0 * np.sqrt(1 - self.zeta**2) # damped natural frequency
 
     @cached_property
     def omega0(self):
@@ -581,55 +559,43 @@ class HarmonicOscillationSystem:
         else:
             NotImplementedError
 
-    def _get_underdamped_solution(self, time_domain: np.ndarray, initial_displacement: float, initial_velocity: float):
-        """
-        Computes the transient (homogeneous) response x(t) and ẋ(t) for underdamped motion.
+    @classmethod
+    def from_loudspeaker_params_file(cls, loudspeaker_params: Loudspeaker):
+        assert isinstance(loudspeaker_params, Loudspeaker)
+        k, c = calculate_mechanical_parameters(loudspeaker_params.thiele_small.fS, loudspeaker_params.moving_mass.MMS, loudspeaker_params.thiele_small.quality_factors.QTS)
+        return cls(mass=loudspeaker_params.moving_mass.MMS, damping_coefficient=c, stiffness=k)
 
-        The response is based on the general solution for underdamped harmonic motion:
-            x(t) = A ⋅ e^(−Γ/2 ⋅ t) ⋅ cos(ω₁ ⋅ t − β)
-            ẋ(t) = −A ⋅ e^(−Γ/2 ⋅ t) ⋅ [ω₁ ⋅ sin(ω₁ ⋅ t − β) + Γ/2 ⋅ cos(ω₁ ⋅ t − β)]
+class HarmonicOscillationSystem:
+    """
+    Solve the equation of motion for a linear damped harmonic oscillator with multiple harmonic external forces:
+    m·ẍ(t) + c·ẋ(t) + k·x(t) = Σⱼ Fⱼ·cos(ωⱼ·t + φⱼ)
+    https://phys.libretexts.org/Bookshelves/Classical_Mechanics/Variational_Principles_in_Classical_Mechanics_(Cline)/03%3A_Linear_Oscillators/3.06%3A_Sinusoidally-driven_linearly-damped_linear_oscillator
+    """
+    def __init__(self, loudspeaker_params: Loudspeaker)->None:
+        self.parameters = HarmonicOscillationParams.from_loudspeaker_params_file(loudspeaker_params=loudspeaker_params)
+        self.homogeneus = HomogeneousOscillationSolver(self.parameters)
+        self.particular = ParticularFrequency(self.parameters)
 
-        where A and beta depends on initial condition.
-        """
+    def solve_homogeneous_part(self, time: np.ndarray, initial_displacement: np.ndarray, initial_velocity: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        return self.homogeneus.solve(time=time, initial_displacement=initial_displacement, initial_velocity=initial_velocity)
 
-        A, beta = self.compute_homogeneous_constants(initial_displacement, initial_velocity)
-        envelope = np.exp(-0.5 * self.total_c * time_domain)
-        phase = self.omega1 * time_domain - beta
 
-        displacement = A * envelope * np.cos(phase)
-        velocity = -A * envelope * (self.omega1 * np.sin(phase) + 0.5 * self.total_c * np.cos(phase))
+    def solve_particular_part(self, time: np.ndarray, frequencies: np.ndarray, amplitudes: np.ndarray, phases: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        assert len(frequencies) == len(amplitudes) == len(phases)
+        displacement = np.zeros_like(time)
+        velocity = np.zeros_like(time)
+        for frequency, amplitude, phase in zip(frequencies, amplitudes, phases):
+            x, v = self.particular.solve(time=time, frequency=2*np.pi*frequency, amplitude=amplitude, phase=phase)
+            displacement += x
+            velocity +=v
         return displacement, velocity
 
-    def _get_complementary_solution(self, initial_displacement: float, initial_velocity: float):
-        """"""
-        #TODO add time
-
-        time_domain=None
-        if self.type == "underdamped":
-            return self._get_underdamped_solution(time_domain, initial_displacement, initial_velocity)
-        else:
-            raise NotImplementedError
-
-
-    def solve_steady_state():
-        pass
-
-    def solve(self, frequencies: np.ndarray, amplitudes: np.ndarray, phases: np.ndarray, initial_displacement: float = 0.0, initial_velocity: float = 0.0):
-        complementary_solution=None
-        particular_solution=None
-        # solution=homogeneous_solution+particular_solution
-        solution=None
-        return solution
-
-
-
-
-
-
-
-def fourier_analytical(: np.ndarray, mass: float, damping_coefficient: float, stiffness: float, init_x: float=0.0, init_v: float=0.0):
-    
-    pass
+    def solve(self, time: np.ndarray, frequencies: np.ndarray, amplitudes: np.ndarray, phases: np.ndarray, initial_displacement: float = 0.0, initial_velocity: float = 0.0):
+        homogeneous_solution_displacement, homogeneous_solution_velocity = self.solve_homogeneous_part(time=time, initial_displacement=initial_displacement, initial_velocity=initial_velocity)
+        particular_solution_displacement, particular_solution_velocity = self.solve_particular_part(time=time, frequencies=frequencies, amplitudes=amplitudes, phases=phases)
+        displacement_solution = homogeneous_solution_displacement + particular_solution_displacement
+        velocity_solution = homogeneous_solution_velocity + particular_solution_velocity
+        return displacement_solution, velocity_solution
 
 def get_frame(frame: np.ndarray):
     return np.abs(frame), np.angle(frame)
@@ -649,7 +615,6 @@ def frame_generator(freqs: np.ndarray, spec: np.ndarray, threshold: float):
         else:
             yield np.array([0.0]), np.array([0.0]), np.array([0.0])
 
-
 def main(
     input_signal_path: Path,
     loudspeaker_params: Loudspeaker,
@@ -659,6 +624,7 @@ def main(
     hop_length: int = 512,
     sampling_rate: int = 48000,
     amplitude_frequency_threshold = 0.1,
+    verbose: bool = True,
     ) -> None:
 
     assert isinstance(input_signal_path, Path)
@@ -681,104 +647,104 @@ def main(
         hop_length=hop_length,
     )
 
-    print(len(freqs))
-    print(spec.shape[0])
     assert len(freqs) == spec.shape[0]
 
-    for i, (frequency, amplitude, phase) in enumerate(frame_generator(freqs, spec, threshold=amplitude_frequency_threshold)):
-        print(f"Frame {i} - peaks: {frequency}")
-    raise
-
+    oscillation_solver = HarmonicOscillationSystem(loudspeaker_params)
 
     n_frames = spec.shape[1]
-    frame_time = np.arange(win_length) / sampling_rate  # time axis for a single frame
+    # frame_time = np.arange(win_length) / sampling_rate
+    frame_time = np.arange(hop_length) / sampling_rate
 
-    # Calculate full length of reconstructed signal
     reconstructed_length = hop_length * (n_frames - 1) + win_length
-    reconstructed_signal = np.zeros(reconstructed_length)
+    reconstructed_displacement = np.zeros(reconstructed_length)
+    reconstructed_velocity = np.zeros(reconstructed_length)
     overlap_counter = np.zeros(reconstructed_length)
-    for i, i_spec in enumerate(spec.T):
-
-        phases = np.angle(i_spec)
-        phase=phases[peaks]
-
-        # fourier_analytical(
-        #     spec=i_spec,
-        # )
-
-
-        frame_signal = np.zeros_like(frame_time)
-
-        print(peaks)
-        print(phase)
-        for pk in peaks:
-            freq = freqs[pk]
-            mag = magnitude[pk]
-            phi = phases[pk]
-            frame_signal += mag * np.cos(2 * np.pi * freq * frame_time + phi)
+    for i, (frequencies, amplitudes, phases) in enumerate(frame_generator(freqs, spec, threshold=amplitude_frequency_threshold)):
+        print(f"Frame {i} - peaks: {frequencies}, {phases}")
 
         # Overlap-Add
         start = i * hop_length
-        end = start + win_length
-        reconstructed_signal[start:end] += frame_signal
+        # end = start + win_length
+        end = start + hop_length
+
+        # # For validation test
+        # normalization = np.zeros_like(frame_time)
+        # for freq,mag,phi in zip(frequencies, amplitudes, phases):
+        #     reconstructed_displacement[start:end] += np.cos(2 * np.pi * freq * frame_time + phi)
+
+        # reconstructed_velocity[start:end] = reconstructed_displacement[start:end]
+
+        displacement, velocity = oscillation_solver.solve(
+            time=frame_time,
+            frequencies=frequencies,
+            amplitudes=amplitudes,
+            phases=phases,
+            initial_displacement=reconstructed_displacement[start],
+            initial_velocity=reconstructed_velocity[start],
+        )
+
+        reconstructed_displacement[start:end] += displacement
+        reconstructed_velocity[start:end] += velocity
+
         overlap_counter[start:end] += 1
-
-    # Avoid division by zero
     overlap_counter[overlap_counter == 0] = 1
-    reconstructed_signal /= overlap_counter  # Normalize overlapping areas
+    reconstructed_displacement /= overlap_counter
+    reconstructed_velocity /= overlap_counter
 
-    # Plot original and reconstructed signals
+    reconstructed_displacement=reconstructed_displacement[:len(signal)]
+    reconstructed_velocity=reconstructed_velocity[:len(signal)]
     t = np.arange(len(signal)) / sampling_rate
-    t_rec = np.arange(len(reconstructed_signal)) / sampling_rate
+    t_rec = np.arange(len(reconstructed_displacement)) / sampling_rate
 
-    plt.figure(figsize=(12, 5))
-    plt.plot(t, signal, label='Original signal')
-    plt.xlabel("Time [s]")
-    plt.ylabel("Amplitude")
-    plt.title("Manual STFT Reconstruction from Magnitude & Phase")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+    if verbose:
+        plt.figure(figsize=(12, 5))
+        plt.plot(t, signal, label='Original signal')
+        plt.xlabel("Time [s]")
+        plt.ylabel("Amplitude")
+        plt.title("Manual STFT Reconstruction from Magnitude & Phase")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
 
-    plt.figure(figsize=(12, 5))
-    plt.plot(t_rec, reconstructed_signal, label='Reconstructed signal (manual)', linestyle='--')
-    plt.xlabel("Time [s]")
-    plt.ylabel("Amplitude")
-    plt.title("Manual STFT Reconstruction from Magnitude & Phase")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+        plt.figure(figsize=(12, 5))
+        plt.plot(t_rec, reconstructed_displacement, label='Reconstructed signal (manual)', linestyle='--')
+        plt.xlabel("Time [s]")
+        plt.ylabel("Amplitude")
+        plt.title("Manual STFT Reconstruction from Magnitude & Phase")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
 
-    freqs, amplitudes = fft_analysis(reconstructed_signal, sampling_rate)
+        freqs, amplitudes = fft_analysis(signal, sampling_rate)
 
-    plt.figure(figsize=(12, 5))
-    plt.plot(freqs, amplitudes, label='Reconstructed signal (manual)', linestyle='--')
-    plt.xlabel("Time [s]")
-    plt.ylabel("Amplitude")
-    plt.title("Manual STFT Reconstruction from Magnitude & Phase")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-
-
-        # peaks, peak_vals = detect_peaks(magnitude)
-        # print(f"Time frame {i}: Peaks at bins {peaks} with magnitudes {peak_vals}")
+        plt.figure(figsize=(12, 5))
+        plt.plot(freqs, amplitudes, label='Orginal signal (manual)')
+        plt.xlabel("Frequency [Hz]")
+        plt.ylabel("Amplitude")
+        plt.title("Manual STFT Reconstruction from Magnitude & Phase")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
 
 
-    print(t)
-    print(len(t))
+        freqs, amplitudes = fft_analysis(reconstructed_displacement, sampling_rate)
 
-
-    # x, v = fourier_analytical(signal)
-
-    pass
+        plt.figure(figsize=(12, 5))
+        plt.plot(freqs, amplitudes, label='Reconstructed signal (manual)', linestyle='--')
+        plt.xlabel("Frequency [Hz]")
+        plt.ylabel("Amplitude")
+        plt.title("Manual STFT Reconstruction from Magnitude & Phase")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    # save_numpy_file(output_path=output_path.with_suffix(".v.npy"), data=v)
-    # save_numpy_file(output_path=output_path.with_suffix(".x.npy"), data=x)
+    save_numpy_file(output_path=output_path.with_suffix(".v.npy"), data=reconstructed_displacement)
+    save_numpy_file(output_path=output_path.with_suffix(".x.npy"), data=reconstructed_velocity)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -791,7 +757,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--input_signal_path",
         type=str,
-        default="examples/cosine_wave.npy",
+        default="examples/chord_signal.npy",
         help="Input signal representing external lorentz force.",
     )
     parser.add_argument(

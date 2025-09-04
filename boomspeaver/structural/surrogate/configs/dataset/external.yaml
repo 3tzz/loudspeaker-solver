@@ -1,19 +1,23 @@
 name: external
 
 type: statebystate
-time_gap: False
+time_gap: false
 
 train_val:
-  external: True
-  split: True
-  input_train:
-    path: output_surrogate/train_split/global_ids_val_filt.txt
-    repo_relative: True
+  split: true
+  external: true
   input_val:
-    path: output_surrogate/train_split/global_ids_val_filt.txt
-    repo_relative: True
+    path: output_surrogate/train_split/random_starts.txt
+    repo_relative: true
+  input_train:
+    path: output_surrogate/train_split/global_ids_train_new_10step.txt
+    repo_relative: true
 
 global_ids:
-  save: False
+  save: true
+  output:
+    path: output_surrogate/third_unet
+    repo_relative: true
+    exists_ok: true
 
 normalization: perpair

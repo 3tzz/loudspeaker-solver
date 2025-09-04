@@ -1,7 +1,7 @@
 optimizer: adam
 device: cuda
 lr: 0.001
-batch_size: 131072
+batch_size: 32
 epochs: 10000
 loss: mse
 shuffle: true
@@ -10,7 +10,7 @@ scheduler:
   mode: min
   factor: 0.5
   patience: 10
-  verbose: True
+resume: false
 output:
   path: output_surrogate/first_train
-  repo_relative: True
+  repo_relative: true

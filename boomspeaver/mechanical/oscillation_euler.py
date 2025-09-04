@@ -7,7 +7,7 @@ from scipy.integrate import solve_ivp
 
 from boomspeaver.loudspeaker.schema import Loudspeaker
 from boomspeaver.tools.data import load_numpy_file, save_numpy_file
-from boomspeaver.tools.signal.make_sound import generate_time_domain
+from boomspeaver.tools.dsp.make_sound import generate_time_domain
 
 
 def euler_mass_spring_damper(
