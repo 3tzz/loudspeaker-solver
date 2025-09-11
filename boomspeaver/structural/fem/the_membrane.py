@@ -133,7 +133,7 @@ def simulate_wave(
     mic_coordinates: list[float] | None,
     save_membrane: bool,
     damping: float | None = None,
-    bcs: str = "dirichlet",
+    bcs: str = "neumann",
 ) -> None:
     """Setup and simulate wave equation."""
     V = fem.functionspace(domain, ("Lagrange", 1))
@@ -262,7 +262,7 @@ def main(
             domain = create_circular_mesh(
                 radius=r_diaphragm,
                 mesh_size=mesh_resolution,
-                output_dir=output_path.parent,
+                output_path=output_path,
             )
             if force is not None:
                 shape_profile = Shape(

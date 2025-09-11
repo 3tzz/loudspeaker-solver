@@ -51,19 +51,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--input_signal_path",
         type=str,
-        default="examples/log_sweep_nominal_impedance.npy",
+        default="examples/chord_signal.npy",
         help="Input current signal.",
     )
     parser.add_argument(
         "--loudspeaker_params",
         type=str,
-        default="example/prv_audio_6MB400_8ohm.json",
+        default="examples/prv_audio_6MB400_8ohm.json",
         help="File representing loudspeaker parameters.",
     )
     parser.add_argument(
         "--output_path",
         type=str,
-        default="output/log_sweep_magnetic_force.npy",
+        default="output/chord_signal_magnetic.npy",
         help="Output path.",
     )
 

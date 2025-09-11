@@ -6,9 +6,9 @@
     "unit": "mm"
   },
   "box": {
-    "length": 411,
-    "width": 548,
-    "height": 700,
+    "length": 200,
+    "width": 200,
+    "height": 300,
     "unit": "mm"
   }
 }

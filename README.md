@@ -1,7 +1,7 @@
 # loudspeaker-solver
 
 <p align="left">
-  <img src="./dosc/beaver_chatgpt_generated.png" width="400">
+  <img src="./docs/beaver_chatgpt_generated.png" width="400">
 </p>
 
 ## Environment Setup
@@ -35,6 +35,14 @@ cd ${ROOT_DIR}
 docker compose down
 ```
 
+#### Known Issue
+
+```bash
+docker exec -it fenics /bin/bash
+pip install -e .
+exit
+```
+
 ## Usage
 
 ```bash
@@ -49,17 +57,16 @@ source .venv/bin/activate
 
 ```bash
 cd &{ROOT_DIR}
-./run_fenics.sh -c path/to/repository/relative/python_script.py
+./run_fenics.sh -c path/relative/to/repository/python_script.py
 ```
 
 #### Dolfinx numeric complex mode
 
 ```bash
 cd &{ROOT_DIR}
-./run_fenics.sh path/to/repository/relative/python_script.py
+./run_fenics.sh path/relative/to/repository/python_script.py
 ```
 
-### Loudspeaker solver service
 ## Repository Structure
 
 ### Loudspeaker
@@ -87,5 +94,26 @@ Represents loudspeaker electromagnetic converter part that transforms **audio si
 Represents loudspeaker mechanical converter. This part transforms **magnetic force** to **mechanical oscillation**. According to loudspeaker parameters from [loudspeaker database site](https://loudspeakerdatabase.com).
 
 - `oscillation_euler.py` – signal magnetic_force-to-membrane_oscillation converter for loudspeaker signals. ODE numeric solver using Euler Forward method.
+- `oscillation_radau.py` – signal magnetic_force-to-membrane_oscillation converter for loudspeaker signals. ODE numeric solver using Radau implicit method.
+- `oscillation_analytical_fourier.py` – signal magnetic_force-to-membrane_oscillation converter for loudspeaker signals. Analytical solver using STFT signal decomposition and analytical formulas.
+
+### Structural
+
+- `fem/the_membrane.py` - signal membrane_oscillation-to-membrane_propagation converter for loudspeaker signals. FEM solver using wave equation.
+- `surrogate/` — Code for training surrogate models. Currently serves as infrastructure for training, but may need refinement and will likely be relocated in the future.
 
 ### Acoustic
+
+- `microphone_pressure.py` - part of code for grasping data from defined points from simulation domain using cartesian coordinates
+- `wave_equation_2d.py` - signal membrane_oscillation-to-room_sound_propagation converter for loudspeaker signal. FEM solver but only 2d prototype.
+- `wave_equation_piston_3d.py` - signal membrane_oscillation-to-room_sound_propagation converter for loudspeaker signal. FEM solver using wave equation.
+- `wave_equation_mdynamic_3d.py` - signal membrane_propagation-to-room_sound_propagation converter for loudspeaker signal. FEM solver using wave equation from structural results.
+
+### Tools
+
+- `dsp` — utilities and functions for digital signal processing.
+- `plot` - custom plotting functions
+- `data.py` - utilities for data management, including loading, saving, and locating appropriate.
+- `fem.py` - methods used in fem scripts
+- `multiprocessing_runner.py` - class for multiprocessing run
+- `sampler.py` - script for generating random membrane initial states.

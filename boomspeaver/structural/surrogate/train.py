@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import hydra
 import torch
 from hydra.utils import instantiate
@@ -8,13 +10,15 @@ from boomspeaver.structural.surrogate.dataset import get_dataset
 from boomspeaver.structural.surrogate.model import Model
 from boomspeaver.structural.surrogate.models import ModelArchitecture
 from boomspeaver.structural.surrogate.utils import save_config
+from boomspeaver.tools.data import search4paths
 
 
 @hydra.main(config_path="configs", config_name="config", version_base="1.3")
+# @hydra.main(config_path=None, config_name="config", version_base="1.3")
 def train(cfg: DictConfig) -> None:
     print("Loading data...")
     dataset_train, dataset_val = get_dataset(cfg)
-    print("Data loaded.")
+    print(f"Data loaded: train {len(dataset_train)}, validate {len(dataset_val)}.")
 
     print("Dataset loading...")
     train_loader = DataLoader(
@@ -45,25 +49,40 @@ def train(cfg: DictConfig) -> None:
     if cfg.training.scheduler is False:
         scheduler = None
     else:
-        scheduler = instantiate(cfg.scheduler, optimizer=optimizer)
+        scheduler = instantiate(cfg.training.scheduler, optimizer=optimizer)
 
     trainer = Model(
-        model=model, optimizer=optimizer, loss_fn=loss_fn, device=cfg.training.device
+        model=model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        loss_fn=loss_fn,
+        device=cfg.training.device,
     )
+
+    epoch, best_val_loss = 0, float("inf")
+    if cfg.training.resume:
+        checkpoint_paths = list(Path(cfg.training.output.path).glob("*.pt"))
+        if not checkpoint_paths:
+            print(
+                f"WARNING: There are no checkpoint in output path to load: {cfg.training.output.path}."
+            )
+        elif len(checkpoint_paths) != 1:
+            raise ValueError(
+                f"There are probably multiple checkpoint files in output path: {checkpoint_paths}."
+            )
+        else:
+            epoch, best_val_loss = trainer.load_checkpoint(checkpoint_paths[0])
+            epoch += 1
     save_config(cfg)
 
-    # for step in range(10000):
-    #     for batch in train_loader:
-    #         inputs, targets, _ = batch
-    #
-    #         inputs = inputs.unsqueeze(1).unsqueeze(1)  # [B, 1, 1, T]
-    #         targets = targets.unsqueeze(1).unsqueeze(1)  # [B, 1, 1, T]
-    #
-    #         loss = trainer.train_step(inputs, targets)
-    #     loss += loss
-    #     print(f"Step {step} - Loss: {loss:.6f}")
     print("Training...")
-    trainer.train(train_loader=train_loader, val_loader=val_loader, cfg=cfg.training)
+    trainer.train(
+        train_loader=train_loader,
+        val_loader=val_loader,
+        cfg=cfg.training,
+        start_epoch=epoch,
+        best_val_loss=best_val_loss,
+    )
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ import numpy as np
 from boomspeaver.loudspeaker.electrical_impedance import ImpedanceData
 from boomspeaver.loudspeaker.schema import Loudspeaker
 from boomspeaver.tools.data import load_wave_file, save_numpy_file
-from boomspeaver.tools.dsp.dsp import istft, plot_spectrogram, stft
+from boomspeaver.tools.dsp.dsp import istft, stft
 
 
 def voltage_to_current_resistive(voltage_signal: np.ndarray, Re: float) -> np.ndarray:
@@ -146,19 +146,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--input_signal_path",
         type=str,
-        default="examples/log_sweep.wav",
+        default="examples/chord_signal.wav",
         help="Input audio signal.",
     )
     parser.add_argument(
         "--loudspeaker_params",
         type=str,
-        default="example/prv_audio_6MB400_8ohm.json",
+        default="examples/prv_audio_6MB400_8ohm.json",
         help="File representing loudspeaker parameters.",
     )
     parser.add_argument(
         "--output_path",
         type=str,
-        default="output/log_sweep_current.npy",
+        default="output/chord_signal_current.npy",
         help="Output path.",
     )
 

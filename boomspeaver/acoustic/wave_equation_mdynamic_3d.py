@@ -104,7 +104,7 @@ def simulate_wave(
     output_path: Path,
     mic_coordinates: bool,
     membrane_surface: int,
-    bcs: str = "dirichlet",
+    bcs: str = "neumann",
     bcs_surfaces: list[int] | None = None,
 ):
     """Setup and Simulate wave equation."""

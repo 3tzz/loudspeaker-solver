@@ -9,8 +9,13 @@ from sklearn.model_selection import train_test_split
 from torch._C import dtype
 from torch.utils.data import Dataset
 
-from boomspeaver.tools.data import (get_repo_dir, load_numpy_file,
-                                    load_txt_file, save_txt_file, search4paths)
+from boomspeaver.tools.data import (
+    get_repo_dir,
+    load_numpy_file,
+    load_txt_file,
+    save_txt_file,
+    search4paths,
+)
 
 
 class DiaphragmDataset(Dataset):
@@ -44,12 +49,12 @@ class DiaphragmDataset(Dataset):
         assert isinstance(self.global_ids, list)
         assert len(self.global_ids) != 0
         assert isinstance(self.global_ids[0], str)
+
         assert len(list(self.global_ids)) == len(list(set(self.global_ids)))
         assert len(self.data) == len(self.global_ids)
 
-        assert isinstance(self.time_gaps, list)
+        assert isinstance(self.time_gaps, torch.Tensor)
         assert len(self.time_gaps) != 0
-        assert isinstance(self.time_gaps[0], int)
         assert len(self.data) == len(self.time_gaps)
 
     def _get_global_ids(self, global_ids: list[str] | None) -> list[str]:
@@ -59,8 +64,8 @@ class DiaphragmDataset(Dataset):
 
     def _get_time_gaps(self, time_gaps: list[int] | None) -> list[str]:
         if not time_gaps:
-            time_gaps = [1 for i in self.data]
-        return time_gaps
+            time_gaps = [1 for _ in self.data]
+        return torch.tensor(time_gaps, dtype=torch.float32)
 
     @classmethod
     def from_time_history(
@@ -90,7 +95,7 @@ class DiaphragmDataset(Dataset):
             for i in range(time_history, data_i.shape[0] - time_future):
                 if time_gap:
                     for gap in range(i, data_i.shape[0] - time_future):
-                        time_gap = int(gap - i)
+                        time_step = int(gap - i)
 
                         input_tensor = torch.tensor(
                             data_i[i - time_history : i], dtype=torch.float32
@@ -100,10 +105,11 @@ class DiaphragmDataset(Dataset):
                         )
 
                         data.append((input_tensor, output_tensor))
-                        time_gaps.append(time_gap)
+                        time_gaps.append(time_step)
                         if global_ids:
-                            name=str(i)+str(gap)
-                            global_idss.append(global_ids[idx] + f"_{name}")
+                            global_idss.append(
+                                global_ids[idx] + f"_{str(i)}" + f"_{str(gap)}"
+                            )
                 else:
                     input_tensor = torch.tensor(
                         data_i[i - time_history : i], dtype=torch.float32
@@ -115,7 +121,9 @@ class DiaphragmDataset(Dataset):
                     if global_ids:
                         global_idss.append(global_ids[idx] + f"_{str(i)}")
 
-        return cls(input_data=data, global_ids=global_idss, time_gaps=time_gaps, device=device)
+        return cls(
+            input_data=data, global_ids=global_idss, time_gaps=time_gaps, device=device
+        )
 
     @classmethod
     def from_list2stepbystep(
@@ -142,26 +150,33 @@ class DiaphragmDataset(Dataset):
         data = []
         global_idss = []
         time_gaps = []
+        n_step = 1
+        print(f"Step: {n_step}.")
         for idx, data_i in enumerate(input_data):
-            for i in range(data_i.shape[0] - 1):
+            for i in range(data_i.shape[0] - n_step):
                 if time_gap:
                     for gap in range(i, data_i.shape[0] - 1):
-                        time_gap = int(gap - i)
+                        time_step = int(gap - i)
                         input_tensor = torch.tensor(data_i[i], dtype=torch.float32)
                         output_tensor = torch.tensor(data_i[gap], dtype=torch.float32)
                         data.append((input_tensor, output_tensor))
-                        time_gaps.append(time_gap)
-                        if global_ids:
-                            name=str(i)+str(gap)
-                            global_idss.append(global_ids[idx] + f"_{name}")
+                        time_gaps.append(time_step)
 
+                        if global_ids:
+                            global_idss.append(
+                                global_ids[idx] + f"_{str(i)}" + f"_{str(gap)}"
+                            )
                 else:
                     input_tensor = torch.tensor(data_i[i], dtype=torch.float32)
-                    output_tensor = torch.tensor(data_i[i + 1], dtype=torch.float32)
+                    output_tensor = torch.tensor(
+                        data_i[i + n_step], dtype=torch.float32
+                    )
                     data.append((input_tensor, output_tensor))
                     if global_ids:
                         global_idss.append(global_ids[idx] + f"_{str(i)}")
-        return cls(input_data=data, global_ids=global_idss, time_gaps=time_gaps , device=device)
+        return cls(
+            input_data=data, global_ids=global_idss, time_gaps=time_gaps, device=device
+        )
 
     @classmethod
     def from_config(
@@ -203,7 +218,9 @@ class DiaphragmDataset(Dataset):
                 if cfg.data.filter.input.repo_relative:
                     input_path = Path(get_repo_dir(run_type="python")) / input_path
                 global_ids_filt = {
-                    cfg.data.global_id_formatter.join_delimiter.join(global_id.split(cfg.data.global_id_formatter.join_delimiter)[:2])
+                    cfg.data.global_id_formatter.join_delimiter.join(
+                        global_id.split(cfg.data.global_id_formatter.join_delimiter)[:2]
+                    )
                     for global_id in load_txt_file(input_path)
                 }
             else:
@@ -221,11 +238,9 @@ class DiaphragmDataset(Dataset):
                     parts.append(part)
             global_id = cfg.data.global_id_formatter.join_delimiter.join(parts)
 
-            if global_ids_filt is not None:
-                if global_id in global_ids_filt:
-                    global_ids.append(global_id)
-                else:
-                    continue
+            if global_ids_filt is not None and global_id not in global_ids_filt:
+                continue
+            global_ids.append(global_id)
 
             try:
                 arrays.append(load_numpy_file(path))
@@ -244,7 +259,10 @@ class DiaphragmDataset(Dataset):
 
         elif cfg.dataset.type == "statebystate":
             return cls.from_list2stepbystep(
-                input_data=arrays, global_ids=global_ids, time_gap=cfg.dataset.time_gap, device=device
+                input_data=arrays,
+                global_ids=global_ids,
+                time_gap=cfg.dataset.time_gap,
+                device=device,
             )
         else:
             raise NotImplementedError(f"Unknown dataset type: {cfg.dataset.type}.")
@@ -256,7 +274,7 @@ class DiaphragmDataset(Dataset):
         """
         save_txt_file(data=self.global_ids, file_path=output_path)
 
-    def filter(self, global_ids: set[str]) -> "DiaphragmDataset":
+    def filter(self, global_ids: set[str], verbose=True) -> "DiaphragmDataset":
         """
         Return a new DiaphragmDataset instance containing only samples
         whose global_ids are in the provided as argument.
@@ -270,6 +288,9 @@ class DiaphragmDataset(Dataset):
                 filtered_data.append(self.data[i])
                 filtered_ids.append(gid)
 
+        if filtered_ids and verbose:
+            print(f"Filtered: {len(filtered_ids)} IDs.")
+
         return DiaphragmDataset(
             input_data=filtered_data,
             global_ids=filtered_ids,
@@ -277,16 +298,21 @@ class DiaphragmDataset(Dataset):
         )
 
     def split(
-        self, val_ratio: float = 0.2, seed: int = 42
+        self,
+        val_ratio: float = 0.2,
+        seed: int = 42,
+        verbose=True,
     ) -> tuple["DiaphragmDataset", "DiaphragmDataset"]:
         """Split DiaphragmDataset for training and validation Diaphragmsdatasets."""
 
         train_ids, val_ids = train_test_split(
             self.global_ids, test_size=val_ratio, random_state=seed
         )
+        if verbose:
+            print(f"Split for train: {len(train_ids)} and valdate: {len(val_ids)}")
         return (
-            self.filter(set(train_ids)),
-            self.filter(set(val_ids)),
+            self.filter(set(train_ids), verbose=False),
+            self.filter(set(val_ids), verbose=False),
         )
 
     def __len__(self):
@@ -294,8 +320,8 @@ class DiaphragmDataset(Dataset):
 
     def __getitem__(self, idx):
         input_tensor, output_tensor = self.data[idx]
-        global_id = self.global_ids[idx]
-        return input_tensor.to(self.device), output_tensor.to(self.device), global_id
+        time_gap = self.time_gaps[idx]
+        return input_tensor.to(self.device), output_tensor.to(self.device), time_gap
 
 
 class DatasetNormalizer:
@@ -346,7 +372,6 @@ class DatasetNormalizer:
             new_data = []
             for input_t, output_t in dataset.data:
                 norm_input = normalize_tensor(input_t.to(self.device))
-                # Optionally normalize output_t too; here left as is:
                 new_data.append((norm_input.cpu(), output_t))
             dataset.data = new_data
         else:
@@ -367,19 +392,20 @@ class DatasetNormalizerPerPair:
         self.to_val = to_val
         self.params = {}
 
-    def fit_transform(self, dataset: DiaphragmDataset, inplace=True):
+    def fit_transform(self, dataset: DiaphragmDataset):
         """
         Apply per-sample min-max normalization to inputs and outputs.
         Stores min/max per sample for possible denormalization.
         """
-        norm_data = []
+        assert isinstance(dataset, DiaphragmDataset)
         stats = []
-
+        idx = 0
         for input_t, output_t in dataset.data:
             input_t = input_t.to(self.device)
             output_t = output_t.to(self.device)
 
             concatenated = torch.cat([input_t, output_t], dim=0)
+            # concatenated = input_t
 
             in_min = concatenated.min()
             in_max = concatenated.max()
@@ -387,13 +413,13 @@ class DatasetNormalizerPerPair:
             norm_input = (input_t - in_min) * self.to_val / (in_max - in_min + 1e-8)
             norm_output = (output_t - in_min) * self.to_val / (in_max - in_min + 1e-8)
 
-            norm_data.append((norm_input.cpu(), norm_output.cpu()))
+            dataset.data[idx] = (
+                norm_input.to(dataset.device),
+                norm_output.to(dataset.device),
+            )
             stats.append((in_min, in_max))
-
-        if inplace:
-            dataset.data = norm_data
-        else:
-            return norm_data
+            idx += 1
+        dataset.validate()
 
 
 def get_dataset(cfg: DictConfig) -> tuple["DiaphragmDataset", "DiaphragmDataset"]:
@@ -444,7 +470,9 @@ def get_dataset(cfg: DictConfig) -> tuple["DiaphragmDataset", "DiaphragmDataset"
         print("Data normalization...")
         if cfg.dataset.normalization == "perpair":
             normalizer = DatasetNormalizerPerPair(
-                to_val=10.0, device=torch.device("cpu")
+                to_val=1.0,
+                device=torch.device("cpu"),
+                # to_val=10.0,
             )
             normalizer.fit_transform(dataset_val)
             normalizer.fit_transform(dataset_train)

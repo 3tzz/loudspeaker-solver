@@ -1,9 +1,7 @@
-# pylint: disable=missing-module-docstring
 import argparse
 from pathlib import Path
 
 import numpy as np
-from scipy.integrate import solve_ivp
 
 from boomspeaver.loudspeaker.schema import Loudspeaker
 from boomspeaver.tools.data import load_numpy_file, save_numpy_file
@@ -58,26 +56,6 @@ def euler_mass_spring_damper(
     return x, v
 
 
-# def ode_mass_spring_damper_definition(t, y, frequencies, amplitudes, m, c, k):
-#     """
-#     Defines the system of first-order ODEs
-#     for the mass-spring-damper system with multi-harmonic external force.
-
-#     Parameters:
-#     - t: Current time
-#     - y: State vector [x, v] where x is displacement, v is velocity
-#     - F_func: Function representing the external force F(t)
-#     - m, c, k: System parameters
-
-#     Returns:
-#     - dydt: Array containing dx/dt and dv/dt
-#     """
-#     assert len(frequencies) == len(amplitudes)
-#     x, v = y
-#     F_t = sum(A * np.cos(2 * np.pi * f * t) for A, f in zip(amplitudes, frequencies))
-#     return [v, (F_t - c * v - k * x) / m]
-
-
 def calculate_mechanical_parameters(
     fr: float, m: float, q: float
 ) -> tuple[float, float]:
@@ -122,6 +100,7 @@ def diaphragm_motion(
     )
     return x_signal, v_signal
 
+
 def main(
     input_signal_path: Path,
     loudspeaker_params: Loudspeaker,
@@ -156,19 +135,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--input_signal_path",
         type=str,
-        default="examples/log_sweep_magnetic_force.npy",
+        default="examples/chord_signal.npy",
         help="Input current signal.",
     )
     parser.add_argument(
         "--loudspeaker_params",
         type=str,
-        default="example/prv_audio_6MB400_8ohm.json",
+        default="examples/prv_audio_6MB400_8ohm.json",
         help="File representing loudspeaker parameters.",
     )
     parser.add_argument(
         "--output_path",
         type=str,
-        default="output/log_sweep.npy",
+        default="output/chord_signal_mechanical.npy",
         help="Output path.",
     )
 
@@ -179,3 +158,4 @@ if __name__ == "__main__":
         loudspeaker_params=Loudspeaker.from_json(Path(args.loudspeaker_params)),
         output_path=Path(args.output_path),
     )
+
